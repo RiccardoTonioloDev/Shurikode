@@ -24,7 +24,9 @@ class CodeExtractor(nn.Module):
             self.downsample_block(512, 128, 3),
             CBAM(128),
             nn.Flatten(),
-            nn.Linear(21632, 256),
+            nn.Linear(21632, 1000),
+            nn.Dropout(),
+            nn.Linear(1000, 8),
         )
 
     @staticmethod
@@ -50,9 +52,10 @@ class CodeExtractor(nn.Module):
         return torch.softmax(self.__layers(x), 1)
 
 
-m = CodeExtractor()
-x = torch.ones([1, 3, 400, 400])
-print(m(x).shape)
-print(
-    f"Number of parameters: {sum(p.numel() for p in m.parameters() if p.requires_grad)}"
-)
+if __name__ == "__main__":
+    m = CodeExtractor()
+    x = torch.ones([1, 3, 400, 400])
+    print(m(x).shape)
+    print(
+        f"Number of parameters: {sum(p.numel() for p in m.parameters() if p.requires_grad)}"
+    )
