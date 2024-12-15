@@ -163,3 +163,7 @@ main.py
 *.png
 slurm_files/
 output_files/
+
+# PyTorch checkpoints
+*.pth
+*.pth.tar
