@@ -27,6 +27,7 @@ class CodeExtractor(nn.Module):
             nn.Linear(21632, 1000),
             nn.Dropout(),
             nn.Linear(1000, 8),
+            nn.Sigmoid(),
         )
 
     @staticmethod
