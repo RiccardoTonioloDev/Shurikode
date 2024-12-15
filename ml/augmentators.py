@@ -42,15 +42,23 @@ class RandomPerspectiveWithColor:
 
 class RandomRotationPerspectiveWithColor:
     def __init__(
-        self, degrees_rotation=[-90, 90], p_perspective=0.5, distortion_scale=0.5
+        self,
+        degrees_rotation=[-90, 90],
+        p_perspective=0.5,
+        distortion_scale=0.5,
+        diagonal=600,
     ):
         self.__rotation = RandomRotationWithColor(degrees_rotation, True)
         self.__perspective = RandomPerspectiveWithColor(distortion_scale, p_perspective)
+        self.__diagonal = diagonal
 
     def __call__(self, img: torch.Tensor):
         filler_color = [random.random(), random.random(), random.random()]
         img = self.__rotation(img, filler_color)
-        return self.__perspective(img, filler_color)
+        img = self.__perspective(img, filler_color)
+        return torch.nn.functional.interpolate(
+            img, (self.__diagonal, self.__diagonal), mode="bilinear"
+        )
 
 
 class PieceCutter:

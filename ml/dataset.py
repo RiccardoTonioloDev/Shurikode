@@ -31,7 +31,7 @@ class shurikode_dataset(Dataset):
         # The code it's clear, there are little perspective changes, rotation and 2 random erasing (40% -> 25%)
         self.__clear_complete_augs = transforms.Compose(
             [
-                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2),
+                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2, 400),
                 transforms.RandomErasing(0.3, (0.1, 0.4)),
                 transforms.RandomErasing(0.3, (0.1, 0.4)),
                 transforms.GaussianBlur(7, (1.5, 2.5)),
@@ -41,7 +41,7 @@ class shurikode_dataset(Dataset):
         # The code it's blurred, there are little perspective changes, rotation, gaussian noise, and 1 random erasing (20% -> 25%)
         self.__distorted_complete_augs = transforms.Compose(
             [
-                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2),
+                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2, 400),
                 transforms.RandomErasing(0.3, (0.1, 0.4)),
                 transforms.GaussianBlur(25, 10),
                 transforms.GaussianNoise(sigma=0.1),
