@@ -99,7 +99,7 @@ class shurikode_dataset(Dataset):
             value = value >> 1
             idx -= 1
 
-        return code_tensor.clamp(0, 1).unsqueeze(0), bit_tensor
+        return code_tensor.clamp(0, 1).squeeze(0), bit_tensor
 
     def make_dataloader(
         self,
