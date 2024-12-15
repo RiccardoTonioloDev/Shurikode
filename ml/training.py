@@ -15,16 +15,17 @@ import os
 parser = argparse.ArgumentParser(
     description="Arguments for the training procedure of the Shurikode decoder model."
 )
-parser.add_argument(
-    "--exp_name", type=str, help="The name of the current experiment", default="HomeLab"
-)
+parser.add_argument("--exp_name", type=str, help="The name of the current experiment")
 args = parser.parse_args()
 
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps" if torch.mps.is_available() else "cpu"
-)
+device = "cpu"
+if torch.cuda.is_available():
+    device = "cuda"
+    print("TRAINING ON CUDA")
+elif torch.mps.is_available():
+    device = "mps"
+    print("TRAINING ON MPS")
+
 
 m = CodeExtractor().to(device)
 
@@ -54,23 +55,23 @@ for epoch in range(epochs_n):
 
     epoch_loss = numpy.zeros([0])
 
-    with tqdm(dataloader, unit="batch") as tepoch:
-        for img, gt in dataloader:
-            tepoch.set_description(f"Epoch {epoch}/{epochs_n}")
-            img, gt = img.to(device), gt.to(device)
+    tdataloader = tqdm(dataloader, unit="batch")
+    for img, gt in tdataloader:
+        tdataloader.set_description(f"Epoch {epoch}/{epochs_n}")
+        img, gt = img.to(device), gt.to(device)
 
-            pred: torch.Tensor = m(img)
+        pred: torch.Tensor = m(img)
 
-            loss: torch.Tensor = loss_function(pred, gt)
+        loss: torch.Tensor = loss_function(pred, gt)
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-            tepoch.set_postfix(loss=loss.item())
-            wandb.log({"loss": loss.item()})
+        tdataloader.set_postfix(loss=loss.item())
+        wandb.log({"loss": loss.item()})
 
-            epoch_loss += loss.item()
+        epoch_loss += loss.item()
 
     epoch_loss /= (256 * variety) / batch_size
     if is_first_epoch or epoch_loss < min_loss:
