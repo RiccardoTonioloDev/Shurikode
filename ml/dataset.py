@@ -1,6 +1,6 @@
 from shurikode.shurikode_encoder import shurikode_encoder
 from typing import Tuple
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from torch import Tensor
 from augmentators import (
     RandomRotationPerspectiveWithColor,
@@ -12,7 +12,7 @@ import torch
 import random
 
 
-class shurikode_training_dataset(Dataset):
+class shurikode_dataset(Dataset):
     def __init__(self, variety: int = 100, epoch: int = 0, epochs_n: int = 100):
         self.__variety = variety
 
@@ -100,3 +100,29 @@ class shurikode_training_dataset(Dataset):
             idx -= 1
 
         return code_tensor.clamp(0, 1), bit_tensor
+
+    def make_dataloader(
+        self,
+        batch_size: int = 8,
+        shuffle_batch: bool = True,
+        num_workers: int = 4,
+        pin_memory: bool = True,
+    ) -> DataLoader:
+        """
+            It creates a dataloader from the dataset.
+            - `batch_size`: the number of samples inside a single batch;
+            - `shuffle_batch`: if true the batches will be different in every epoch;
+            - `num_workers`: the number of workers used to create batches;
+            - `pin_memory`: leave it to true (it's to optimize the flow of information between CPU and GPU).
+
+        Returns the configured dataloader.
+        """
+
+        dataloader = DataLoader(
+            self,
+            batch_size,
+            shuffle_batch,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+        )
+        return dataloader
