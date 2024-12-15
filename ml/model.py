@@ -1,6 +1,6 @@
 from torch import nn
 from torch import Tensor
-from ml.attention_modules import CBAM
+from attention_modules import CBAM
 
 import torch
 
