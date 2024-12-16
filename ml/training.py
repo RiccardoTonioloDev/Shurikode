@@ -15,7 +15,12 @@ import os
 parser = argparse.ArgumentParser(
     description="Arguments for the training procedure of the Shurikode decoder model."
 )
-parser.add_argument("--exp_name", type=str, help="The name of the current experiment")
+parser.add_argument("--exp_name", type=str, help="The name of the current experiment.")
+parser.add_argument(
+    "--checkpoints_dir",
+    type=str,
+    help="The directory that will be containing the checkpoints.",
+)
 args = parser.parse_args()
 
 device = "cpu"
@@ -79,7 +84,7 @@ for epoch in range(epochs_n):
         min_loss = epoch_loss
 
         checkpoint_filename = save_model(
-            "./checkpoints/",
+            args.checkpoints_dir,
             f"e{epoch:03d}_{args.exp_name}",
             m.state_dict(),
         )
