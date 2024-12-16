@@ -154,8 +154,12 @@ if __name__ == "__main__":
         default=30,
     )
     args = parser.parse_args()
-    assert os.path.exists(args.train_dir), "The train_dir directory doesn't exist."
-    assert os.path.exists(args.val_dir), "The val_dir directory doesn't exist."
+    assert os.path.exists(
+        args.train_dir
+    ), f"The train_dir directory ({args.train_dir}) doesn't exist."
+    assert os.path.exists(
+        args.val_dir
+    ), f"The val_dir directory ({args.val_dir}) doesn't exist."
     to_pil_image = transforms.ToPILImage()
     dataloader = shurikode_dataset_generator(
         args.train_variety, 100, 100
