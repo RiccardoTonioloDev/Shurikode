@@ -1,71 +1,26 @@
-from shurikode.shurikode_encoder import shurikode_encoder
-from typing import Tuple
+from typing import Tuple, Literal
 from torch.utils.data import Dataset, DataLoader
 from torch import Tensor
-from augmentators import (
-    RandomRotationPerspectiveWithColor,
-    RandomPerspectivePieceCutter,
-)
+from PIL import Image
 
 import torchvision.transforms.v2 as transforms
 import torch
-import random
+import os
 
 
 class shurikode_dataset(Dataset):
-    def __init__(self, variety: int = 100, epoch: int = 0, epochs_n: int = 100):
+    def __init__(
+        self, data_path: str, type: Literal["train", "val"], variety: int = 400
+    ):
         self.__variety = variety
-
+        self.__data_path = data_path
+        self.__type = type
         self.__image_tensorizer = transforms.Compose(
-            [transforms.ToImage(), transforms.ToDtype(torch.float32, scale=True)]
-        )
-
-        self.__progress = epoch / epochs_n
-
-        filler_color = (
-            random.random(),
-            random.random(),
-            random.random(),
-        )
-
-        # The code it's clear, there are little perspective changes, rotation and 2 random erasing (40% -> 25%)
-        self.__clear_complete_augs = transforms.Compose(
             [
-                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2, 400),
-                transforms.RandomErasing(0.3, (0.1, 0.4)),
-                transforms.RandomErasing(0.3, (0.1, 0.4)),
-                transforms.GaussianBlur(7, (1.5, 2.5)),
+                transforms.ToImage(),
+                transforms.ToDtype(torch.float32, scale=False),
             ]
         )
-
-        # The code it's blurred, there are little perspective changes, rotation, gaussian noise, and 1 random erasing (20% -> 25%)
-        self.__distorted_complete_augs = transforms.Compose(
-            [
-                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2, 400),
-                transforms.RandomErasing(0.3, (0.1, 0.4)),
-                transforms.GaussianBlur(25, 10),
-                transforms.GaussianNoise(sigma=0.1),
-            ]
-        )
-
-        # Only a portion of the code is visible, but it's clear, there are little perspective changes (20% -> 25%)
-        self.__clear_piece_augs = transforms.Compose(
-            [
-                RandomPerspectivePieceCutter(1, 0.3, 400),
-                transforms.GaussianBlur(7, (1.5, 2.5)),
-            ]
-        )
-
-        # Only a portion of the code is visible, but it's blurred, there are little perspective changes, gaussian noise (20% -> 25%)
-        self.__distorted_piece_augs = transforms.Compose(
-            [
-                RandomPerspectivePieceCutter(1, 0.3, 400),
-                transforms.GaussianBlur(25, 10),
-                transforms.GaussianNoise(sigma=0.1),
-            ]
-        )
-
-        self.__shurikode_encoder = shurikode_encoder(10)
 
     def __len__(self):
 
@@ -73,24 +28,19 @@ class shurikode_dataset(Dataset):
 
     def __getitem__(self, i: int) -> Tuple[Tensor, Tensor]:
         value = i % 256
+        series = int(i / 256)
 
-        code_tensor: Tensor = self.__image_tensorizer(
-            self.__shurikode_encoder.encode(value).get_PIL_image()
-        ).unsqueeze(0)
-
-        code_tensor = torch.nn.functional.interpolate(
-            code_tensor, (400, 400), mode="bilinear"
+        image_path = os.path.join(
+            self.__data_path, self.__type, f"{series:03}-{value:03}.png"
         )
 
-        aug_choice = random.random()
-        if aug_choice < 0.4 - 0.15 * self.__progress:
-            code_tensor: Tensor = self.__clear_complete_augs(code_tensor)
-        elif aug_choice < 0.6 - 0.10 * self.__progress:
-            code_tensor: Tensor = self.__distorted_complete_augs(code_tensor)
-        elif aug_choice < 0.8 - 0.05 * self.__progress:
-            code_tensor: Tensor = self.__clear_piece_augs(code_tensor)
-        else:
-            code_tensor: Tensor = self.__distorted_piece_augs(code_tensor)
+        try:
+            with Image.open(image_path) as image:
+                image = image.convert("RGB")
+                image_tensor: torch.Tensor = self.__image_tensorizer(image) / 255
+
+        except Exception as e:
+            raise RuntimeError(f"Error loading image: {image_path}. {e}")
 
         bit_tensor = torch.zeros([8])
         idx = -1
@@ -99,7 +49,7 @@ class shurikode_dataset(Dataset):
             value = value >> 1
             idx -= 1
 
-        return code_tensor.clamp(0, 1).squeeze(0), bit_tensor
+        return image_tensor.clamp(0, 1), bit_tensor
 
     def make_dataloader(
         self,

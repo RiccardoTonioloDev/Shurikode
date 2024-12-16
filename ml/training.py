@@ -21,6 +21,11 @@ parser.add_argument(
     type=str,
     help="The directory that will be containing the checkpoints.",
 )
+parser.add_argument(
+    "--datasets_path",
+    type=str,
+    help="The directory where the train and val datasets directories are located.",
+)
 args = parser.parse_args()
 
 device = "cpu"
@@ -51,18 +56,24 @@ wandb.init(
 )
 
 is_first_epoch = True
-min_loss = numpy.zeros([0])
+min_loss = torch.Tensor([0]).to(device)
 checkpoint_files: List[str] = []
+train_dataset = shurikode_dataset(
+    data_path=args.datasets_path, type="train", variety=variety
+)
+train_dataloader = train_dataset.make_dataloader(batch_size=batch_size)
+val_dataset = shurikode_dataset(
+    data_path=args.datasets_path, type="val", variety=variety
+)
+val_dataloader = val_dataset.make_dataloader(batch_size=batch_size)
+
 for epoch in range(epochs_n):
-    dataset = shurikode_dataset(variety=variety, epoch=epoch, epochs_n=epochs_n)
 
-    dataloader = dataset.make_dataloader(batch_size=batch_size)
-
-    epoch_loss = numpy.zeros([0])
-
-    tdataloader = tqdm(dataloader, unit="batch")
+    ########################################## TRAINING EPOCH ##########################################
+    m.train()
+    tdataloader = tqdm(train_dataloader, unit="batch")
     for img, gt in tdataloader:
-        tdataloader.set_description(f"Epoch {epoch}/{epochs_n}")
+        tdataloader.set_description(f"(training) Epoch {epoch}/{epochs_n}")
         img, gt = img.to(device), gt.to(device)
 
         pred: torch.Tensor = m(img)
@@ -76,20 +87,35 @@ for epoch in range(epochs_n):
         tdataloader.set_postfix(loss=loss.item())
         wandb.log({"loss": loss.item()})
 
-        epoch_loss += loss.item()
+    ############################################ VALIDATION ###########################################
+    tdataloader = tqdm(val_dataloader, unit="batch")
+    loss_tower = []
+    with torch.no_grad():
+        m.eval()
+        for img, gt in tdataloader:
+            tdataloader.set_description(f"(validation) Epoch {epoch}/{epochs_n}")
+            img, gt = img.to(device), gt.to(device)
 
-    epoch_loss /= (256 * variety) / batch_size
-    if is_first_epoch or epoch_loss < min_loss:
-        is_first_epoch = False
-        min_loss = epoch_loss
+            pred: torch.Tensor = m(img)
 
-        checkpoint_filename = save_model(
-            args.checkpoints_dir,
-            f"e{epoch:03d}_{args.exp_name}",
-            m.state_dict(),
-        )
-        checkpoint_files.append(checkpoint_filename)
-        for ckpt_file in checkpoint_files[:-1]:
-            if os.path.exists(ckpt_file):
-                os.remove(ckpt_file)
-        checkpoint_files = checkpoint_files[-1:]
+            loss: torch.Tensor = loss_function(pred, gt)
+            loss_tower.append(loss)
+
+            tdataloader.set_postfix(loss=loss.item())
+            wandb.log({"loss": loss.item()})
+
+        avg_loss = sum(loss_tower) / len(loss_tower)
+        if is_first_epoch or avg_loss < min_loss:
+            is_first_epoch = False
+            min_loss = avg_loss
+
+            checkpoint_filename = save_model(
+                args.checkpoints_dir,
+                f"e{epoch:03d}_{args.exp_name}",
+                m.state_dict(),
+            )
+            checkpoint_files.append(checkpoint_filename)
+            for ckpt_file in checkpoint_files[:-1]:
+                if os.path.exists(ckpt_file):
+                    os.remove(ckpt_file)
+            checkpoint_files = checkpoint_files[-1:]
