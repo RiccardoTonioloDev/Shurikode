@@ -30,6 +30,8 @@ class CodeExtractor(nn.Module):
             nn.Sigmoid(),
         )
 
+        self.apply(self.xavier_init)
+
     @staticmethod
     def conv_block(in_chann: int, out_chann: int, kernel: int) -> nn.Module:
         return nn.Sequential(
@@ -46,8 +48,12 @@ class CodeExtractor(nn.Module):
             nn.LeakyReLU(0.1),
         )
 
-    def forward_training(self, x: Tensor) -> Tensor:
-        return self.__layers(x)
+    @staticmethod
+    def xavier_init(m: torch.nn.Module):
+        if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
+            nn.init.xavier_uniform_(m.weight)
+            if m.bias is not None:
+                nn.init.trunc_normal_(m.bias)
 
     def forward(self, x: Tensor) -> Tensor:
         return torch.softmax(self.__layers(x), 1)

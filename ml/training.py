@@ -3,13 +3,12 @@ from dataset import shurikode_dataset
 from losses import loss_function
 from torch.optim import Adam
 from tqdm import tqdm
-from utils import save_model
+from utils import save_model, number_of_correct_predictions
 from typing import List
 
 import torch
 import argparse
 import wandb
-import numpy
 import os
 
 parser = argparse.ArgumentParser(
@@ -41,7 +40,8 @@ m = CodeExtractor().to(device)
 
 epochs_n = 90
 lr = 1e-4
-variety = 128
+train_variety = 128
+val_variety = 128
 batch_size = 32
 
 optimizer = Adam(m.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-8)
@@ -59,11 +59,11 @@ is_first_epoch = True
 min_loss = torch.Tensor([0]).to(device)
 checkpoint_files: List[str] = []
 train_dataset = shurikode_dataset(
-    data_path=args.datasets_path, type="train", variety=variety
+    data_path=args.datasets_path, type="train", variety=train_variety
 )
 train_dataloader = train_dataset.make_dataloader(batch_size=batch_size)
 val_dataset = shurikode_dataset(
-    data_path=args.datasets_path, type="val", variety=variety
+    data_path=args.datasets_path, type="val", variety=val_variety
 )
 val_dataloader = val_dataset.make_dataloader(batch_size=batch_size)
 
@@ -72,7 +72,7 @@ for epoch in range(epochs_n):
     ########################################## TRAINING EPOCH ##########################################
     m.train()
     tdataloader = tqdm(train_dataloader, unit="batch")
-    for img, gt in tdataloader:
+    for i, (img, gt) in enumerate(tdataloader):
         tdataloader.set_description(f"(training) Epoch {epoch}/{epochs_n}")
         img, gt = img.to(device), gt.to(device)
 
@@ -84,8 +84,11 @@ for epoch in range(epochs_n):
         loss.backward()
         optimizer.step()
 
-        tdataloader.set_postfix(loss=loss.item())
-        wandb.log({"loss": loss.item()})
+        acc_05 = number_of_correct_predictions(pred, gt, 0.5) / batch_size
+        acc_08 = number_of_correct_predictions(pred, gt, 0.8) / batch_size
+
+        tdataloader.set_postfix(loss=loss.item(), acc_05=acc_05, acc_08=acc_08)
+        wandb.log({"loss": loss.item(), "acc_05": acc_05, "acc_08": acc_08})
 
     ############################################ VALIDATION ###########################################
     tdataloader = tqdm(val_dataloader, unit="batch")
@@ -101,7 +104,10 @@ for epoch in range(epochs_n):
             loss: torch.Tensor = loss_function(pred, gt)
             loss_tower.append(loss)
 
-            tdataloader.set_postfix(loss=loss.item())
+            acc_05 = number_of_correct_predictions(pred, gt, 0.5) / batch_size
+            acc_08 = number_of_correct_predictions(pred, gt, 0.8) / batch_size
+
+            tdataloader.set_postfix(loss=loss.item(), acc_05=acc_05, acc_08=acc_08)
             wandb.log({"loss": loss.item()})
 
         avg_loss = sum(loss_tower) / len(loss_tower)
