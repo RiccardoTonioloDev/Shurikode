@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Literal
 
 import torch
 import os
@@ -13,10 +13,13 @@ def save_model(
 
 
 def number_of_correct_predictions(
-    pred: torch.Tensor, gt: torch.Tensor, threshold=0.5
+    device: Literal["cpu", "mps", "cuda"],
+    pred: torch.Tensor,
+    gt: torch.Tensor,
+    threshold=0.5,
 ) -> int:
-    binary_pred = (pred > threshold) * torch.ones(
-        pred.shape
+    binary_pred = (pred > threshold) * torch.ones(pred.shape).to(
+        device
     )  # 1 where there is a difference
     tensor_of_differences = torch.sum(
         torch.abs(binary_pred - gt), dim=1
@@ -25,6 +28,8 @@ def number_of_correct_predictions(
         tensor_of_differences > 0
     ) * torch.ones(  # 1 where the image was mislabeled
         tensor_of_differences.shape
+    ).to(
+        device
     )
     number_of_wrong = torch.sum(
         tensor_of_correctness

@@ -84,8 +84,8 @@ for epoch in range(epochs_n):
         loss.backward()
         optimizer.step()
 
-        acc_05 = number_of_correct_predictions(pred, gt, 0.5) / batch_size
-        acc_08 = number_of_correct_predictions(pred, gt, 0.8) / batch_size
+        acc_05 = number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
+        acc_08 = number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
 
         tdataloader.set_postfix(loss=loss.item(), acc_05=acc_05, acc_08=acc_08)
         wandb.log({"loss": loss.item(), "acc_05": acc_05, "acc_08": acc_08})
@@ -104,8 +104,8 @@ for epoch in range(epochs_n):
             loss: torch.Tensor = loss_function(pred, gt)
             loss_tower.append(loss)
 
-            acc_05 = number_of_correct_predictions(pred, gt, 0.5) / batch_size
-            acc_08 = number_of_correct_predictions(pred, gt, 0.8) / batch_size
+            acc_05 = number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
+            acc_08 = number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
 
             tdataloader.set_postfix(loss=loss.item(), acc_05=acc_05, acc_08=acc_08)
             wandb.log({"loss": loss.item()})
