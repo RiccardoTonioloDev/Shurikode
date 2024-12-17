@@ -32,6 +32,14 @@ class CodeExtractor(nn.Module):
 
         self.apply(self.xavier_init)
 
+        # with torch.no_grad():
+        #     CodeExtractor.__binary_transformer = torch.zeros(
+        #         (8, 256), dtype=torch.float32
+        #     )
+        #     for i in range(256):
+        #         binary_code = [int(bit) for bit in format(i, "08b")]
+        #         CodeExtractor.__binary_transformer[:, i] = torch.tensor(binary_code)
+
     @staticmethod
     def conv_block(in_chann: int, out_chann: int, kernel: int) -> nn.Module:
         return nn.Sequential(
@@ -56,12 +64,13 @@ class CodeExtractor(nn.Module):
                 nn.init.trunc_normal_(m.bias)
 
     def forward(self, x: Tensor) -> Tensor:
-        return torch.softmax(self.__layers(x), 1)
+        # return torch.matmul(self.__layers(x), self.__binary_transformer.detach())
+        return self.__layers(x)
 
 
 if __name__ == "__main__":
     m = CodeExtractor()
-    x = torch.ones([1, 3, 400, 400])
+    x = torch.ones([5, 3, 400, 400])
     print(m(x).shape)
     print(
         f"Number of parameters: {sum(p.numel() for p in m.parameters() if p.requires_grad)}"

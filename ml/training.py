@@ -40,8 +40,8 @@ m = CodeExtractor().to(device)
 
 epochs_n = 90
 lr = 1e-4
-train_variety = 128
-val_variety = 128
+train_variety = 400
+val_variety = 30
 batch_size = 32
 
 optimizer = Adam(m.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-8)

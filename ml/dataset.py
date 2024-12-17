@@ -42,6 +42,9 @@ class shurikode_dataset(Dataset):
         except Exception as e:
             raise RuntimeError(f"Error loading image: {image_path}. {e}")
 
+        # multiclass_vector = torch.zeros([256])
+        # multiclass_vector[value] = 1
+
         bit_tensor = torch.zeros([8])
         idx = -1
         while value:
@@ -49,7 +52,7 @@ class shurikode_dataset(Dataset):
             value = value >> 1
             idx -= 1
 
-        return image_tensor.clamp(0, 1), bit_tensor
+        return image_tensor.clamp(0, 1), bit_tensor  # , multiclass_vector
 
     def make_dataloader(
         self,
