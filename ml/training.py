@@ -1,6 +1,6 @@
 from model import CodeExtractor
 from dataset import shurikode_dataset
-from losses import loss_function
+from losses import mse_loss_function, xentr_loss_function
 from torch.optim import Adam
 from tqdm import tqdm
 from utils import save_model, number_of_correct_predictions
@@ -78,17 +78,22 @@ for epoch in range(epochs_n):
 
         pred: torch.Tensor = m(img)
 
-        loss: torch.Tensor = loss_function(pred, gt)
+        loss: torch.Tensor = mse_loss_function(pred, gt)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+        acc_04 = number_of_correct_predictions(device, pred, gt, 0.4) / batch_size
         acc_05 = number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
         acc_08 = number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
 
-        tdataloader.set_postfix(loss=loss.item(), acc_05=acc_05, acc_08=acc_08)
-        wandb.log({"loss": loss.item(), "acc_05": acc_05, "acc_08": acc_08})
+        tdataloader.set_postfix(
+            loss=loss.item(), acc_04=acc_04, acc_05=acc_05, acc_08=acc_08
+        )
+        wandb.log(
+            {"loss": loss.item(), "acc_04": acc_04, "acc_05": acc_05, "acc_08": acc_08}
+        )
 
     ############################################ VALIDATION ###########################################
     tdataloader = tqdm(val_dataloader, unit="batch")
@@ -101,14 +106,17 @@ for epoch in range(epochs_n):
 
             pred: torch.Tensor = m(img)
 
-            loss: torch.Tensor = loss_function(pred, gt)
+            # loss: torch.Tensor = mse_loss_function(pred, gt)
+            loss: torch.Tensor = xentr_loss_function(pred, gt)
             loss_tower.append(loss)
 
+            acc_04 = number_of_correct_predictions(device, pred, gt, 0.4) / batch_size
             acc_05 = number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
             acc_08 = number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
 
-            tdataloader.set_postfix(loss=loss.item(), acc_05=acc_05, acc_08=acc_08)
-            wandb.log({"loss": loss.item()})
+            tdataloader.set_postfix(
+                loss=loss.item(), acc_04=acc_04, acc_05=acc_05, acc_08=acc_08
+            )
 
         avg_loss = sum(loss_tower) / len(loss_tower)
         if is_first_epoch or avg_loss < min_loss:
