@@ -166,26 +166,16 @@ class BinNet_stair(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Downscaling
-        print("downscaler block:")
         x1 = self.__level_1_starter(x)
-        print(x1.shape)
         x2 = self.__level_2_starter(x1)
-        print(x2.shape)
         x3 = self.__level_3_starter(x2)
-        print(x3.shape)
         x4 = self.__level_4_starter(x3)
-        print(x4.shape)
 
         # Processing
-        print("enhancer block:")
         x1 = self.__level_1_enhancer(x1)
-        print(x1.shape)
         x2 = self.__level_2_enhancer(x2)
-        print(x2.shape)
         x3 = self.__level_3_enhancer(x3)
-        print(x3.shape)
         x4 = self.__level_4_enhancer(x4)
-        print(x4.shape)
 
         # Downscaling
         x1_downscale_l2 = self.__level_1_downscaler(x1)
