@@ -1,6 +1,6 @@
-from model import CodeExtractor
+from model import BinNet_stair
 from dataset import shurikode_dataset
-from losses import mse_loss_function, xentr_loss_function
+from losses import xentr_loss_function_stair
 from torch.optim import Adam
 from tqdm import tqdm
 from utils import save_model, number_of_correct_predictions
@@ -36,7 +36,7 @@ elif torch.mps.is_available():
     print("TRAINING ON MPS")
 
 
-m = CodeExtractor().to(device)
+m = BinNet_stair().to(device)
 
 epochs_n = 90
 lr = 1e-4
@@ -76,17 +76,25 @@ for epoch in range(epochs_n):
         tdataloader.set_description(f"(training) Epoch {epoch}/{epochs_n}")
         img, gt = img.to(device), gt.to(device)
 
-        pred: torch.Tensor = m(img)
+        pred_complete, pred_4, pred_3, pred_2, pred_1 = m.training_forward(img)
 
-        loss: torch.Tensor = mse_loss_function(pred, gt)
+        loss: torch.Tensor = xentr_loss_function_stair(
+            pred_complete, pred_4, pred_3, pred_2, pred_1, gt
+        )
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        acc_04 = number_of_correct_predictions(device, pred, gt, 0.4) / batch_size
-        acc_05 = number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
-        acc_08 = number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
+        acc_04 = (
+            number_of_correct_predictions(device, pred_complete, gt, 0.4) / batch_size
+        )
+        acc_05 = (
+            number_of_correct_predictions(device, pred_complete, gt, 0.5) / batch_size
+        )
+        acc_08 = (
+            number_of_correct_predictions(device, pred_complete, gt, 0.8) / batch_size
+        )
 
         tdataloader.set_postfix(
             loss=loss.item(), acc_04=acc_04, acc_05=acc_05, acc_08=acc_08
@@ -104,15 +112,26 @@ for epoch in range(epochs_n):
             tdataloader.set_description(f"(validation) Epoch {epoch}/{epochs_n}")
             img, gt = img.to(device), gt.to(device)
 
-            pred: torch.Tensor = m(img)
+            pred_complete, pred_4, pred_3, pred_2, pred_1 = m.training_forward(img)
 
             # loss: torch.Tensor = mse_loss_function(pred, gt)
-            loss: torch.Tensor = xentr_loss_function(pred, gt)
+            loss: torch.Tensor = xentr_loss_function_stair(
+                pred_complete, pred_4, pred_3, pred_2, pred_1, gt
+            )
             loss_tower.append(loss)
 
-            acc_04 = number_of_correct_predictions(device, pred, gt, 0.4) / batch_size
-            acc_05 = number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
-            acc_08 = number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
+            acc_04 = (
+                number_of_correct_predictions(device, pred_complete, gt, 0.4)
+                / batch_size
+            )
+            acc_05 = (
+                number_of_correct_predictions(device, pred_complete, gt, 0.5)
+                / batch_size
+            )
+            acc_08 = (
+                number_of_correct_predictions(device, pred_complete, gt, 0.8)
+                / batch_size
+            )
 
             tdataloader.set_postfix(
                 loss=loss.item(), acc_04=acc_04, acc_05=acc_05, acc_08=acc_08
@@ -133,3 +152,8 @@ for epoch in range(epochs_n):
                 if os.path.exists(ckpt_file):
                     os.remove(ckpt_file)
             checkpoint_files = checkpoint_files[-1:]
+checkpoint_filename = save_model(
+    args.checkpoints_dir,
+    f"final_{args.exp_name}",
+    m.state_dict(),
+)
