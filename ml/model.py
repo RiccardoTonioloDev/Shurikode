@@ -225,6 +225,7 @@ class BinNet_stair(nn.Module):
             )
             layers.append(nn.BatchNorm2d(2 ** (8 + i - 1)))
             layers.append(nn.LeakyReLU(0.1))
+            layers.append(CBAM(2 ** (8 + i - 1)))
         return nn.Sequential(*layers), 2 ** (8 + cycles - 2)
 
     @staticmethod
