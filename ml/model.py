@@ -237,28 +237,32 @@ class BinNet_deepstair(nn.Module):
         )  # output: [256, 50, 50]
 
         self.__final_prediction_head = BinNet_deepstair.__prediction_head(
-            256 * 50 * 50, 8
+            16 * 25 * 25, 8
         )
 
         self.apply(xavier_init)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x1 = self.__l1_downscaler(x)
-        x2 = self.__l2_downscaler(x1)
+        x = self.__l1_downscaler(x)
+        x2 = self.__l2_downscaler(x)
 
-        x1 = self.__l1_encoder(x1)
+        x = self.__l1_encoder(x)
 
         x3 = self.__l3_downscaler(x2)
 
-        x2 = self.__l2_encoder(self.__concat(x2, x1))
+        x = self.__l2_encoder(self.__concat(x2, x))
+        del x2
 
         x4 = self.__l4_downscaler(x3)
 
-        x3 = self.__l3_encoder(self.__concat(x3, x2))
+        x = self.__l3_encoder(self.__concat(x3, x))
+        del x3
 
-        x4 = self.__l4_encoder(self.__concat(x4, x3))
+        x = self.__l4_encoder(self.__concat(x4, x))
+        del x4
 
-        return self.__final_prediction_head(x4)
+        print(x.shape)
+        return self.__final_prediction_head(x)
 
     @staticmethod
     def __downscaler(level: int) -> Tuple[nn.Module, int]:
@@ -282,10 +286,10 @@ class BinNet_deepstair(nn.Module):
                 BinNet_deepstair.__Conv2d_Block(input_features, 512, 3, padding=1),
                 BinNet_deepstair.__Conv2d_Block(512, 128, 3, padding=1),
                 BinNet_deepstair.__Conv2d_Block(128, 32, 3, padding=1),
-                BinNet_deepstair.__Conv2d_Block(32, 8, 3, padding=1),
-                BinNet_deepstair.__Conv2d_Block(32, 8, 3, padding=1, stride=2),
+                BinNet_deepstair.__Conv2d_Block(32, 16, 3, padding=1),
+                BinNet_deepstair.__Conv2d_Block(16, 16, 3, padding=1, stride=2),
             ),
-            8,
+            16,
         )
 
     @staticmethod
@@ -296,9 +300,9 @@ class BinNet_deepstair(nn.Module):
     def __prediction_head(input_features: int, output_features: int):
         return nn.Sequential(
             nn.Flatten(),
-            nn.Linear(input_features, 256),
+            nn.Linear(input_features, 1000),
             nn.Dropout(),
-            nn.Linear(256, output_features),
+            nn.Linear(1000, output_features),
             nn.Sigmoid(),
         )
 
@@ -332,12 +336,11 @@ class BinNet_deepstair(nn.Module):
 if __name__ == "__main__":
     m = BinNet_alexnet()
     x = torch.ones([5, 3, 400, 400])
-    print(m(x).shape)
     print(
         f"Number of parameters (alexnet): {sum(p.numel() for p in m.parameters() if p.requires_grad)}"
     )
 
-    m = BinNet_stair()
+    m = BinNet_deepstair()
     x = torch.rand([1, 3, 400, 400])
     m(x)
     print(
