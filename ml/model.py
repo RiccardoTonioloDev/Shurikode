@@ -261,7 +261,6 @@ class BinNet_deepstair(nn.Module):
         x = self.__l4_encoder(self.__concat(x4, x))
         del x4
 
-        print(x.shape)
         return self.__final_prediction_head(x)
 
     @staticmethod
