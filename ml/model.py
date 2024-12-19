@@ -123,47 +123,6 @@ class BinNet_stair(nn.Module):
 
         self.apply(xavier_init)
 
-    def training_forward(
-        self, x: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        # Downscaling
-        x1 = self.__level_1_starter(x)
-        x2 = self.__level_2_starter(x1)
-        x3 = self.__level_3_starter(x2)
-        x4 = self.__level_4_starter(x3)
-
-        # Processing
-        x1 = self.__level_1_enhancer(x1)
-        x2 = self.__level_2_enhancer(x2)
-        x3 = self.__level_3_enhancer(x3)
-        x4 = self.__level_4_enhancer(x4)
-
-        # Downscaling
-        x1_downscale_l2 = self.__level_1_downscaler(x1)
-        x2x1_to_compress = torch.cat([x1_downscale_l2, x2], 1)
-        x2x1_compressed = self.__level_2_compressor(x2x1_to_compress)
-        x1_downscale_l4 = self.__level_3_downscaler(
-            self.__level_2_downscaler(x1_downscale_l2)
-        )
-
-        x2x1_downscale_l3 = self.__level_2_downscaler(x2x1_compressed)
-        x3x2x1_to_compress = torch.cat([x2x1_downscale_l3, x3], 1)
-        x3x2x1_compressed = self.__level_3_compressor(x3x2x1_to_compress)
-        x2_downscale_l4 = self.__level_3_downscaler(self.__level_2_downscaler(x2))
-
-        x3x2x1_downscale_l4 = self.__level_3_downscaler(x3x2x1_compressed)
-        x4x3x2x1_to_compress = torch.cat([x3x2x1_downscale_l4, x4], 1)
-        x4x3x2x1_compressed = self.__level_4_compressor(x4x3x2x1_to_compress)
-        x3_downscale_l4 = self.__level_3_downscaler(x3)
-
-        return (
-            self.__final_prediction_head(x4x3x2x1_compressed),
-            self.__final_prediction_head(x4),
-            self.__final_prediction_head(x3_downscale_l4),
-            self.__final_prediction_head(x2_downscale_l4),
-            self.__final_prediction_head(x1_downscale_l4),
-        )
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Downscaling
         x1 = self.__level_1_starter(x)
@@ -241,7 +200,132 @@ class BinNet_stair(nn.Module):
     @staticmethod
     def __prediction_head(input_features: int, output_features: int):
         return nn.Sequential(
-            nn.Flatten(), nn.Linear(input_features, output_features), nn.Sigmoid()
+            nn.Flatten(),
+            nn.Linear(input_features, output_features),
+            nn.Sigmoid(),
+        )
+
+
+class BinNet_deepstair(nn.Module):
+    def __init__(self):
+        super(BinNet_deepstair, self).__init__()
+
+        self.__l1_downscaler, nf_l1s = BinNet_deepstair.__downscaler(
+            1
+        )  # output: [16, 400, 400]
+        self.__l2_downscaler, nf_l2s = BinNet_deepstair.__downscaler(
+            2
+        )  # output: [32, 200, 200]
+        self.__l3_downscaler, nf_l3s = BinNet_deepstair.__downscaler(
+            3
+        )  # output: [64, 100, 100]
+        self.__l4_downscaler, nf_l4s = BinNet_deepstair.__downscaler(
+            4
+        )  # output: [128, 50, 50]
+
+        self.__l1_encoder, nf_l1e = BinNet_deepstair.__encoder(
+            nf_l1s
+        )  # output: [256, 400, 400]
+        self.__l2_encoder, nf_l2e = BinNet_deepstair.__encoder(
+            nf_l2s + nf_l1e
+        )  # output: [256, 200, 200]
+        self.__l3_encoder, nf_l3e = BinNet_deepstair.__encoder(
+            nf_l3s + nf_l2e
+        )  # output: [256, 100, 100]
+        self.__l4_encoder, nf_l4e = BinNet_deepstair.__encoder(
+            nf_l4s + nf_l3e
+        )  # output: [256, 50, 50]
+
+        self.__final_prediction_head = BinNet_deepstair.__prediction_head(
+            256 * 50 * 50, 8
+        )
+
+        self.apply(xavier_init)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x1 = self.__l1_downscaler(x)
+        x2 = self.__l2_downscaler(x1)
+
+        x1 = self.__l1_encoder(x1)
+
+        x3 = self.__l3_downscaler(x2)
+
+        x2 = self.__l2_encoder(self.__concat(x2, x1))
+
+        x4 = self.__l4_downscaler(x3)
+
+        x3 = self.__l3_encoder(self.__concat(x3, x2))
+
+        x4 = self.__l4_encoder(self.__concat(x4, x3))
+
+        return self.__final_prediction_head(x4)
+
+    @staticmethod
+    def __downscaler(level: int) -> Tuple[nn.Module, int]:
+        assert level >= 1, "The level parameter has to be greater than 1."
+        layers: List[nn.Module] = [
+            BinNet_deepstair.__Conv2d_Block(
+                3 if level == 1 else 2 ** (3 + level - 1),
+                2 ** (3 + level),
+                3,
+                padding=1,
+                stride=1 if level == 1 else 2,
+            ),
+        ]
+
+        return nn.Sequential(*layers), 2 ** (3 + level)
+
+    @staticmethod
+    def __encoder(input_features: int) -> Tuple[nn.Module, int]:
+        return (
+            nn.Sequential(
+                BinNet_deepstair.__Conv2d_Block(input_features, 512, 3, padding=1),
+                BinNet_deepstair.__Conv2d_Block(512, 128, 3, padding=1),
+                BinNet_deepstair.__Conv2d_Block(128, 32, 3, padding=1),
+                BinNet_deepstair.__Conv2d_Block(32, 8, 3, padding=1),
+                BinNet_deepstair.__Conv2d_Block(32, 8, 3, padding=1, stride=2),
+            ),
+            8,
+        )
+
+    @staticmethod
+    def __concat(t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
+        return torch.cat([t1, t2], 1)
+
+    @staticmethod
+    def __prediction_head(input_features: int, output_features: int):
+        return nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(input_features, 256),
+            nn.Dropout(),
+            nn.Linear(256, output_features),
+            nn.Sigmoid(),
+        )
+
+    @staticmethod
+    def __Conv2d_Block(
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int | str = 0,
+        dilation: int = 1,
+        padding_mode: str = "zeros",
+    ) -> nn.Module:
+
+        return nn.Sequential(
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                padding_mode=padding_mode,
+            ),
+            nn.BatchNorm2d(out_channels),
+            nn.LeakyReLU(0.1),
+            CBAM(out_channels),
         )
 
 
@@ -256,7 +340,6 @@ if __name__ == "__main__":
     m = BinNet_stair()
     x = torch.rand([1, 3, 400, 400])
     m(x)
-    m.training_forward(x)
     print(
         f"Number of parameters (stairs): {sum(p.numel() for p in m.parameters() if p.requires_grad)}"
     )

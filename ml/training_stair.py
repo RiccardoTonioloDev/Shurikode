@@ -1,9 +1,13 @@
-from model import BinNet_stair
+from model import BinNet_deepstair
 from dataset import shurikode_dataset
 from losses import mse_loss_function
 from torch.optim import Adam
 from tqdm import tqdm
-from utils import save_model, number_of_correct_predictions
+from utils import (
+    save_model,
+    number_of_correct_predictions,
+    avg_errors_in_wrong_predictions,
+)
 from typing import List
 
 import torch
@@ -36,7 +40,7 @@ elif torch.mps.is_available():
     print("TRAINING ON MPS")
 
 
-m = BinNet_stair().to(device)
+m = BinNet_deepstair().to(device)
 
 epochs_n = 90
 lr = 1e-4
@@ -76,7 +80,7 @@ for epoch in range(epochs_n):
         tdataloader.set_description(f"(training) Epoch {epoch}/{epochs_n}")
         img, gt = img.to(device), gt.to(device)
 
-        pred = m(img)
+        pred: torch.Tensor = m(img)
 
         loss: torch.Tensor = mse_loss_function(pred, gt)
 
@@ -85,14 +89,35 @@ for epoch in range(epochs_n):
         optimizer.step()
 
         acc_04 = number_of_correct_predictions(device, pred, gt, 0.4) / batch_size
+        avg_err_04 = avg_errors_in_wrong_predictions(device, pred, gt, 0.4)
         acc_05 = number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
+        avg_err_05 = avg_errors_in_wrong_predictions(device, pred, gt, 0.5)
         acc_08 = number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
+        avg_err_08 = avg_errors_in_wrong_predictions(device, pred, gt, 0.8)
+
+        tdataloader.set_postfix(
+            loss=loss.item(),
+            acc_04=acc_04,
+            acc_05=acc_05,
+            acc_08=acc_08,
+            avg_err_04=avg_err_04,
+            avg_err_05=avg_err_05,
+            avg_err_08=avg_err_08,
+        )
 
         tdataloader.set_postfix(
             loss=loss.item(), acc_04=acc_04, acc_05=acc_05, acc_08=acc_08
         )
         wandb.log(
-            {"loss": loss.item(), "acc_04": acc_04, "acc_05": acc_05, "acc_08": acc_08}
+            {
+                "loss": loss.item(),
+                "acc_04": acc_04,
+                "acc_05": acc_05,
+                "acc_08": acc_08,
+                "avg_err_04": avg_err_04,
+                "avg_err_05": avg_err_05,
+                "avg_err_08": avg_err_08,
+            }
         )
 
     ############################################ VALIDATION ###########################################
@@ -104,35 +129,29 @@ for epoch in range(epochs_n):
             tdataloader.set_description(f"(validation) Epoch {epoch}/{epochs_n}")
             img, gt = img.to(device), gt.to(device)
 
-            pred = m(img)
+            pred: torch.Tensor = m(img)
 
             # loss: torch.Tensor = mse_loss_function(pred, gt)
             loss: torch.Tensor = mse_loss_function(pred, gt)
             loss_tower.append(loss)
 
             acc_04 = number_of_correct_predictions(device, pred, gt, 0.4) / batch_size
+            avg_err_04 = avg_errors_in_wrong_predictions(device, pred, gt, 0.4)
             acc_05 = number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
+            avg_err_05 = avg_errors_in_wrong_predictions(device, pred, gt, 0.5)
             acc_08 = number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
+            avg_err_08 = avg_errors_in_wrong_predictions(device, pred, gt, 0.8)
 
             tdataloader.set_postfix(
-                loss=loss.item(), acc_04=acc_04, acc_05=acc_05, acc_08=acc_08
+                loss=loss.item(),
+                acc_04=acc_04,
+                acc_05=acc_05,
+                acc_08=acc_08,
+                avg_err_04=avg_err_04,
+                avg_err_05=avg_err_05,
+                avg_err_08=avg_err_08,
             )
 
-        avg_loss = sum(loss_tower) / len(loss_tower)
-        if is_first_epoch or avg_loss < min_loss:
-            is_first_epoch = False
-            min_loss = avg_loss
-
-            checkpoint_filename = save_model(
-                args.checkpoints_dir,
-                f"e{epoch:03d}_{args.exp_name}",
-                m.state_dict(),
-            )
-            checkpoint_files.append(checkpoint_filename)
-            for ckpt_file in checkpoint_files[:-1]:
-                if os.path.exists(ckpt_file):
-                    os.remove(ckpt_file)
-            checkpoint_files = checkpoint_files[-1:]
 checkpoint_filename = save_model(
     args.checkpoints_dir,
     f"final_{args.exp_name}",
