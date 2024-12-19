@@ -13,6 +13,7 @@ from typing import List
 import torch
 import argparse
 import wandb
+import os
 
 parser = argparse.ArgumentParser(
     description="Arguments for the training procedure of the Shurikode decoder model."
@@ -105,7 +106,13 @@ for epoch in range(epochs_n):
         )
 
         tdataloader.set_postfix(
-            loss=loss.item(), acc_04=acc_04, acc_05=acc_05, acc_08=acc_08
+            loss=loss.item(),
+            acc_04=acc_04,
+            acc_05=acc_05,
+            acc_08=acc_08,
+            avg_err_04=avg_err_04,
+            avg_err_05=avg_err_05,
+            avg_err_08=avg_err_08,
         )
         wandb.log(
             {
@@ -150,6 +157,21 @@ for epoch in range(epochs_n):
                 avg_err_05=avg_err_05,
                 avg_err_08=avg_err_08,
             )
+        avg_loss = sum(loss_tower) / len(loss_tower)
+        if is_first_epoch or avg_loss < min_loss:
+            is_first_epoch = False
+            min_loss = avg_loss
+
+            checkpoint_filename = save_model(
+                args.checkpoints_dir,
+                f"e{epoch:03d}_{args.exp_name}",
+                m.state_dict(),
+            )
+            checkpoint_files.append(checkpoint_filename)
+            for ckpt_file in checkpoint_files[:-1]:
+                if os.path.exists(ckpt_file):
+                    os.remove(ckpt_file)
+            checkpoint_files = checkpoint_files[-1:]
 
 checkpoint_filename = save_model(
     args.checkpoints_dir,
