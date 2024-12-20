@@ -1,4 +1,4 @@
-from model import BinNet_alexnet
+from model import AlexNetAlike
 from dataset import shurikode_dataset
 from losses import mse_loss_function
 from torch.optim import Adam
@@ -40,7 +40,7 @@ elif torch.mps.is_available():
     print("TRAINING ON MPS")
 
 
-m = BinNet_alexnet().to(device)
+m = AlexNetAlike().to(device)
 
 epochs_n = 90
 lr = 1e-4

@@ -1,4 +1,4 @@
-from model import ShortDeepStair
+from model import DeepConvNet
 from dataset import shurikode_dataset
 from losses import mse_loss_function
 from torch.optim import Adam
@@ -40,13 +40,13 @@ elif torch.mps.is_available():
     print("TRAINING ON MPS")
 
 
-m = ShortDeepStair().to(device)
+m = DeepConvNet().to(device)
 
 epochs_n = 90
 lr = 1e-4
 train_variety = 400
 val_variety = 30
-batch_size = 12
+batch_size = 64
 
 optimizer = Adam(m.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-8)
 
@@ -106,13 +106,7 @@ for epoch in range(epochs_n):
         )
 
         tdataloader.set_postfix(
-            loss=loss.item(),
-            acc_04=acc_04,
-            acc_05=acc_05,
-            acc_08=acc_08,
-            avg_err_04=avg_err_04,
-            avg_err_05=avg_err_05,
-            avg_err_08=avg_err_08,
+            loss=loss.item(), acc_04=acc_04, acc_05=acc_05, acc_08=acc_08
         )
         wandb.log(
             {
@@ -157,6 +151,7 @@ for epoch in range(epochs_n):
                 avg_err_05=avg_err_05,
                 avg_err_08=avg_err_08,
             )
+
         avg_loss = sum(loss_tower) / len(loss_tower)
         if is_first_epoch or avg_loss < min_loss:
             is_first_epoch = False
@@ -172,7 +167,6 @@ for epoch in range(epochs_n):
                 if os.path.exists(ckpt_file):
                     os.remove(ckpt_file)
             checkpoint_files = checkpoint_files[-1:]
-
 checkpoint_filename = save_model(
     args.checkpoints_dir,
     f"final_{args.exp_name}",
