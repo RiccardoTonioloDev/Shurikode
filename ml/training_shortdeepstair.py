@@ -1,4 +1,4 @@
-from model import BinNet_deepstair
+from model import BinNet_shortdeepstair
 from dataset import shurikode_dataset
 from losses import mse_loss_function
 from torch.optim import Adam
@@ -40,13 +40,13 @@ elif torch.mps.is_available():
     print("TRAINING ON MPS")
 
 
-m = BinNet_deepstair().to(device)
+m = BinNet_shortdeepstair().to(device)
 
 epochs_n = 90
 lr = 1e-4
 train_variety = 400
 val_variety = 30
-batch_size = 16
+batch_size = 32
 
 optimizer = Adam(m.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-8)
 
