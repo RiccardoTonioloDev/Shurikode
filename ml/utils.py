@@ -67,6 +67,6 @@ def avg_errors_in_wrong_predictions(
     avg_errors_per_image = torch.sum(
         tensor_of_differences
     )  # computing how many images where mislabeled
-    return (
-        avg_errors_per_image.item().__int__() / number_of_wrong.item().__int__()
+    return avg_errors_per_image.item().__int__() / (
+        number_of_wrong.item().__int__() if number_of_wrong.item().__int__() > 0 else 1
     )  # computing how many images where right

@@ -345,36 +345,40 @@ class BinNet_shortdeepstair(nn.Module):
         self.__l3_downscaler, nf_l3s = BinNet_shortdeepstair.__downscaler(
             3
         )  # output: [64, 100, 100]
+        self.__l4_downscaler, nf_l4s = BinNet_shortdeepstair.__downscaler(
+            4
+        )  # output: [128, 50, 50]
 
-        self.__l1_encoder, nf_l1e = BinNet_shortdeepstair.__encoder(
-            nf_l1s
-        )  # output: [256, 400, 400]
         self.__l2_encoder, nf_l2e = BinNet_shortdeepstair.__encoder(
-            nf_l2s + nf_l1e
+            nf_l2s
         )  # output: [256, 200, 200]
         self.__l3_encoder, nf_l3e = BinNet_shortdeepstair.__encoder(
             nf_l3s + nf_l2e
         )  # output: [256, 100, 100]
+        self.__l4_encoder, nf_l4e = BinNet_shortdeepstair.__encoder(
+            nf_l4s + nf_l3e
+        )  # output: [256, 50, 50]
 
         self.__final_prediction_head = BinNet_shortdeepstair.__prediction_head(
-            16 * 50 * 50, 8
+            16 * 25 * 25, 8
         )
 
         self.apply(xavier_init)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.__l1_downscaler(x)
-        x2 = self.__l2_downscaler(x)
+        x = self.__l2_downscaler(self.__l1_downscaler(x))
 
-        x = self.__l1_encoder(x)
+        x3 = self.__l3_downscaler(x)
 
-        x3 = self.__l3_downscaler(x2)
+        x = self.__l2_encoder(x)
 
-        x = self.__l2_encoder(self.__concat(x2, x))
-        del x2
+        x4 = self.__l4_downscaler(x3)
 
         x = self.__l3_encoder(self.__concat(x3, x))
         del x3
+
+        x = self.__l4_encoder(self.__concat(x4, x))
+        del x4
 
         return self.__final_prediction_head(x)
 
@@ -384,6 +388,12 @@ class BinNet_shortdeepstair(nn.Module):
         layers: List[nn.Module] = [
             BinNet_shortdeepstair.__Conv2d_Block(
                 3 if level == 1 else 2 ** (3 + level - 1),
+                2 ** (3 + level),
+                3,
+                padding=1,
+            ),
+            BinNet_shortdeepstair.__Conv2d_Block(
+                2 ** (3 + level),
                 2 ** (3 + level),
                 3,
                 padding=1,
@@ -397,8 +407,7 @@ class BinNet_shortdeepstair(nn.Module):
     def __encoder(input_features: int) -> Tuple[nn.Module, int]:
         return (
             nn.Sequential(
-                BinNet_shortdeepstair.__Conv2d_Block(input_features, 128, 3, padding=1),
-                BinNet_shortdeepstair.__Conv2d_Block(128, 256, 3, padding=1),
+                BinNet_shortdeepstair.__Conv2d_Block(input_features, 256, 3, padding=1),
                 BinNet_shortdeepstair.__Conv2d_Block(256, 512, 3, padding=1),
                 BinNet_shortdeepstair.__Conv2d_Block(512, 128, 3, padding=1),
                 BinNet_shortdeepstair.__Conv2d_Block(128, 32, 3, padding=1),
@@ -416,9 +425,9 @@ class BinNet_shortdeepstair(nn.Module):
     def __prediction_head(input_features: int, output_features: int):
         return nn.Sequential(
             nn.Flatten(),
-            nn.Linear(input_features, 200),
+            nn.Linear(input_features, 1000),
             nn.Dropout(),
-            nn.Linear(200, output_features),
+            nn.Linear(1000, output_features),
             nn.Sigmoid(),
         )
 
