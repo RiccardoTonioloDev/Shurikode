@@ -65,11 +65,11 @@ class DeepConvNet(nn.Module):
         super(DeepConvNet, self).__init__()
 
         self.__layers = nn.Sequential(
-            self.conv_block(3, 16, 5, cbam=True),
-            self.conv_block(16, 32, 5, cbam=True),
-            self.conv_block(32, 64, 5, cbam=True),
-            self.conv_block(64, 128, 5, cbam=True),
-            self.conv_block(128, 256, 5, cbam=True),
+            self.conv_block(3, 16, 7),
+            self.conv_block(16, 32, 3),
+            self.conv_block(32, 64, 3),
+            self.conv_block(64, 128, 3),
+            self.conv_block(128, 256, 3),
             self.downsample_block(256, 512, 3),
             self.downsample_block(512, 512, 3),
             self.downsample_block(512, 256, 3),
