@@ -2,6 +2,7 @@ from torch import nn
 from torch import Tensor
 from attention_modules import CBAM
 from typing import List, Tuple
+from torchvision import models
 
 import torch
 
@@ -104,7 +105,6 @@ class DeepConvNet(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.__layers(x)
-        print(x.shape)
         return x
 
 
@@ -356,6 +356,12 @@ class ShortDeepStair(nn.Module):
         )
 
 
+def Create_ResNet50():
+    model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
+    model.fc = nn.Linear(model.fc.in_features, 8)
+    return model
+
+
 if __name__ == "__main__":
     m = AlexNetAlike()
     x = torch.ones([5, 3, 400, 400])
@@ -380,6 +386,13 @@ if __name__ == "__main__":
     m = ShortDeepStair()
     x = torch.rand([1, 3, 400, 400])
     m(x)
+    print(
+        f"Number of parameters (shortdeepstairs): {sum(p.numel() for p in m.parameters() if p.requires_grad)}"
+    )
+
+    m = Create_ResNet50()
+    x = torch.rand([1, 3, 400, 400])
+    print(m(x))
     print(
         f"Number of parameters (shortdeepstairs): {sum(p.numel() for p in m.parameters() if p.requires_grad)}"
     )
