@@ -356,9 +356,15 @@ class ShortDeepStair(nn.Module):
         )
 
 
-def Create_ResNet50():
-    model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-    model.fc = nn.Linear(model.fc.in_features, 8)
+def Create_ResNet50(weights=None, out_features=8):
+    model = None
+    if not weights:
+        model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
+    else:
+        model = models.resnet50()
+    model.fc = nn.Linear(model.fc.in_features, out_features)
+    if weights:
+        model.load_state_dict(weights)
     return model
 
 

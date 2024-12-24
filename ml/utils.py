@@ -1,4 +1,4 @@
-from typing import Dict, Any, Literal
+from typing import Dict, Any, Literal, List, Tuple
 
 import torch
 import os
@@ -70,3 +70,85 @@ def avg_errors_in_wrong_predictions(
     return avg_errors_per_image.item().__int__() / (
         number_of_wrong.item().__int__() if number_of_wrong.item().__int__() > 0 else 1
     )  # computing how many images where right
+
+
+def generate_hamming(bits: List[int]) -> List[int]:
+    # Calcolo il numero di bit di parità necessari
+    n = len(bits)
+    m = 0
+    while (2**m) < (n + m + 1):
+        m += 1
+
+    # Positioning parity bits in the list
+    hamming = []
+    j = 0
+    k = 0
+    for i in range(1, n + m + 1):
+        if i == 2**j:  # Positioning a parity bit
+            hamming.append(0)
+            j += 1
+        else:
+            hamming.append(bits[k])
+            k += 1
+
+    # Calculating parity bits values
+    for p in range(m):
+        parity_pos = 2**p
+        parity = 0
+        for i in range(1, len(hamming) + 1):
+            if i & parity_pos:  # Verifying if bit is part of the group
+                parity ^= hamming[i - 1]
+        hamming[parity_pos - 1] = parity
+
+    return hamming
+
+
+def detect_and_correct(hamming: List[int]) -> Tuple[List[int], int]:
+    m = 0
+    while (2**m) < len(hamming):
+        m += 1
+
+    # Calculating error position
+    error_pos = 0
+    for p in range(m):
+        parity_pos = 2**p
+        parity = 0
+        for i in range(1, len(hamming) + 1):
+            if i & parity_pos:
+                parity ^= hamming[i - 1]
+        if parity != 0:
+            error_pos += parity_pos
+
+    # Correcting the error if necessary
+    if error_pos > 0:
+        hamming[error_pos - 1] ^= 1
+
+    # Removing parity bits to return only the data
+    original_bits = []
+    j = 0
+    for i in range(1, len(hamming) + 1):
+        if i != 2**j:
+            original_bits.append(hamming[i - 1])
+        else:
+            j += 1
+
+    return original_bits, error_pos
+
+
+if __name__ == "__main__":
+    hamming = generate_hamming([0, 1, 0, 1, 1, 0, 1, 0])
+    print(hamming)
+    data, err = detect_and_correct(hamming)
+    print(data, err)
+    hamming[4] = 1 if hamming[4] == 0 else 0
+    data, err = detect_and_correct(hamming)
+    print(data, err)
+    hamming[7] = 1 if hamming[7] == 0 else 0
+    data, err = detect_and_correct(hamming)
+    print(data, err)
+    hamming[1] = 1 if hamming[1] == 0 else 0
+    data, err = detect_and_correct(hamming)
+    print(data, err)
+    hamming[0] = 1 if hamming[0] == 0 else 0
+    data, err = detect_and_correct(hamming)
+    print(data, err)
