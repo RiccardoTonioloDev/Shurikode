@@ -127,7 +127,7 @@ class shurikode_dataset_hamming(Dataset):
             idx -= 1
         hamming = generate_hamming(bit_tensor)
 
-        return image_tensor.clamp(0, 1), torch.tensor(bit_tensor)  # , multiclass_vector
+        return image_tensor.clamp(0, 1), torch.tensor(hamming)  # , multiclass_vector
 
     def make_dataloader(
         self,
