@@ -80,7 +80,7 @@ for epoch in range(epochs_n):
         tdataloader.set_description(f"(training) Epoch {epoch}/{epochs_n}")
         img, gt = img.to(device), gt.to(device)
 
-        pred: torch.Tensor = m(img)
+        pred: torch.Tensor = torch.sigmoid(m(img))
 
         loss: torch.Tensor = mse_loss_function(pred, gt)
 
@@ -129,7 +129,7 @@ for epoch in range(epochs_n):
             tdataloader.set_description(f"(validation) Epoch {epoch}/{epochs_n}")
             img, gt = img.to(device), gt.to(device)
 
-            pred: torch.Tensor = m(img)
+            pred: torch.Tensor = torch.sigmoid(m(img))
 
             # loss: torch.Tensor = mse_loss_function(pred, gt)
             loss: torch.Tensor = mse_loss_function(pred, gt)
