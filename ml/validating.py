@@ -50,6 +50,7 @@ def validate(
             sum_err_05 += err_05
             if err_05 > 0:
                 errors_05 += 1
+                print(f"Item number: {int(i/256)}-{i%256}, #errors(05): {err_05}")
 
             acc_08 = (
                 (acc_08 * i)
@@ -68,13 +69,22 @@ def validate(
                 avg_err_05=sum_err_05 / (errors_05 if errors_05 != 0 else 1),
                 avg_err_08=sum_err_08 / (errors_08 if errors_08 != 0 else 1),
             )
+        print(
+            f"Acc04: {acc_04} - #err: {sum_err_04 / (errors_04 if errors_04 != 0 else 1)}"
+        )
+        print(
+            f"Acc05: {acc_05} - #err: {sum_err_05 / (errors_05 if errors_05 != 0 else 1)}"
+        )
+        print(
+            f"Acc08: {acc_08} - #err: {sum_err_08 / (errors_08 if errors_08 != 0 else 1)}"
+        )
 
 
 if __name__ == "__main__":
     """
     # TO EXECUTE AS MAIN ONLY IN CLUSTER (VERIFY TO HAVE VALID PATHS FOR CHECKPOINTS)
     """
-    print("---------------------------ear- NORMAL -----------------------------")
+    print("---------------------------- NORMAL -----------------------------")
     print("")
 
     checkpoints_dir = "/home/rtoniolo/Shurikode/ml/checkpoints"
