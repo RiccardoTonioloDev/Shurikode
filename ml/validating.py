@@ -74,7 +74,7 @@ if __name__ == "__main__":
     """
     # TO EXECUTE AS MAIN ONLY IN CLUSTER (VERIFY TO HAVE VALID PATHS FOR CHECKPOINTS)
     """
-    print("----------------------------- NORMAL -----------------------------")
+    print("---------------------------ear- NORMAL -----------------------------")
     print("")
 
     checkpoints_dir = "/home/rtoniolo/Shurikode/ml/checkpoints"
@@ -96,6 +96,8 @@ if __name__ == "__main__":
 
     state_dict = torch.load(os.path.join(checkpoints_dir, checkpoints_to_use))
     m = Create_ResNet50(state_dict, 12).to(device)
-    dataloader = shurikode_dataset(datasets_dir, "val", 30).make_dataloader(1, False)
+    dataloader = shurikode_dataset_hamming(datasets_dir, "val", 30).make_dataloader(
+        1, False
+    )
 
     validate(m, dataloader, device, 1)
