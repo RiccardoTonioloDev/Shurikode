@@ -18,11 +18,14 @@ def validate(
 ):
     tdataloader = tqdm(val_dataloader, unit="batch")
     acc_04 = 0
-    avg_err_04 = 0
+    sum_err_04 = 0
     acc_05 = 0
-    avg_err_05 = 0
+    sum_err_05 = 0
     acc_08 = 0
-    avg_err_08 = 0
+    sum_err_08 = 0
+    errors_04 = 0
+    errors_05 = 0
+    errors_08 = 0
     with torch.no_grad():
         m.eval()
         for i, (img, gt) in enumerate(tdataloader):
@@ -34,34 +37,36 @@ def validate(
                 (acc_04 * i)
                 + (number_of_correct_predictions(device, pred, gt, 0.4) / batch_size)
             ) / (i + 1)
-            avg_err_04 = (
-                (avg_err_04 * i)
-                + avg_errors_in_wrong_predictions(device, pred, gt, 0.4)
-            ) / (i + 1)
+            err_04 = avg_errors_in_wrong_predictions(device, pred, gt, 0.4)
+            sum_err_04 += err_04
+            if err_04 > 0:
+                errors_04 += 1
+
             acc_05 = (
                 (acc_05 * i)
                 + number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
             ) / (i + 1)
-            avg_err_05 = (
-                (avg_err_05 * i)
-                + avg_errors_in_wrong_predictions(device, pred, gt, 0.5)
-            ) / (i + 1)
+            err_05 = avg_errors_in_wrong_predictions(device, pred, gt, 0.5)
+            sum_err_05 += err_05
+            if err_05 > 0:
+                errors_05 += 1
+
             acc_08 = (
                 (acc_08 * i)
                 + number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
             ) / (i + 1)
-            avg_err_08 = (
-                (avg_err_08 * i)
-                + avg_errors_in_wrong_predictions(device, pred, gt, 0.8)
-            ) / (i + 1)
+            err_08 = avg_errors_in_wrong_predictions(device, pred, gt, 0.8)
+            sum_err_08 += err_08
+            if err_08 > 0:
+                errors_08 += 1
 
             tdataloader.set_postfix(
                 acc_04=acc_04,
                 acc_05=acc_05,
                 acc_08=acc_08,
-                avg_err_04=avg_err_04,
-                avg_err_05=avg_err_05,
-                avg_err_08=avg_err_08,
+                avg_err_04=sum_err_04 / errors_04,
+                avg_err_05=sum_err_05 / errors_05,
+                avg_err_08=sum_err_08 / errors_08,
             )
 
 
@@ -90,7 +95,7 @@ if __name__ == "__main__":
     checkpoints_to_use = "checkpoint_e089_ResNet50_hamming_sig.pth.tar"
 
     state_dict = torch.load(os.path.join(checkpoints_dir, checkpoints_to_use))
-    m = Create_ResNet50(state_dict, 8).to(device)
+    m = Create_ResNet50(state_dict, 12).to(device)
     dataloader = shurikode_dataset(datasets_dir, "val", 30).make_dataloader(1, False)
 
     validate(m, dataloader, device, 1)
