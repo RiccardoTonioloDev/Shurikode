@@ -64,9 +64,9 @@ def validate(
                 acc_04=acc_04,
                 acc_05=acc_05,
                 acc_08=acc_08,
-                avg_err_04=sum_err_04 / errors_04,
-                avg_err_05=sum_err_05 / errors_05,
-                avg_err_08=sum_err_08 / errors_08,
+                avg_err_04=sum_err_04 / (errors_04 if errors_04 != 0 else 1),
+                avg_err_05=sum_err_05 / (errors_05 if errors_05 != 0 else 1),
+                avg_err_08=sum_err_08 / (errors_08 if errors_08 != 0 else 1),
             )
 
 
