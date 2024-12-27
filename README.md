@@ -2,7 +2,7 @@
 
 Shurikode is a 2-dimensional code standard to encapsulate numbers from 0 to 255.
 
-The encoding of shurikode codes is the following:
+The encoding of shurikode codes is as it follows:
 
 <img src="./docs_images/Shurikode_encoding.png" alt="Shurikode encoding strategy" width="300">
 
