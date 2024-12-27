@@ -172,3 +172,4 @@ wandb/
 # DON'T IGNORE
 # !ResNet50_hamming.pth.tar
 !ResNet50.pth.tar
+!Shurikode_encoding.png
