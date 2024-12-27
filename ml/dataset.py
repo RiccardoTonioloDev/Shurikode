@@ -38,7 +38,7 @@ class shurikode_dataset(Dataset):
         try:
             with Image.open(image_path) as image:
                 image = image.convert("RGB")
-                image_tensor: torch.Tensor = self.__image_tensorizer(image) / 255
+                image_tensor: torch.Tensor = self.__image_tensorizer(image)
 
         except Exception as e:
             raise RuntimeError(f"Error loading image: {image_path}. {e}")
@@ -111,13 +111,10 @@ class shurikode_dataset_hamming(Dataset):
         try:
             with Image.open(image_path) as image:
                 image = image.convert("RGB")
-                image_tensor: torch.Tensor = self.__image_tensorizer(image) / 255
+                image_tensor: torch.Tensor = self.__image_tensorizer(image)
 
         except Exception as e:
             raise RuntimeError(f"Error loading image: {image_path}. {e}")
-
-        # multiclass_vector = torch.zeros([256])
-        # multiclass_vector[value] = 1
 
         bit_tensor = [0] * 8
         idx = -1

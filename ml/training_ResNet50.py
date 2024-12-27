@@ -123,9 +123,15 @@ for epoch in range(epochs_n):
     ############################################ VALIDATION ###########################################
     tdataloader = tqdm(val_dataloader, unit="batch")
     loss_tower = []
+    acc_04 = 0
+    avg_err_04 = 0
+    acc_05 = 0
+    avg_err_05 = 0
+    acc_08 = 0
+    avg_err_08 = 0
     with torch.no_grad():
         m.eval()
-        for img, gt in tdataloader:
+        for i, (img, gt) in enumerate(tdataloader):
             tdataloader.set_description(f"(validation) Epoch {epoch}/{epochs_n}")
             img, gt = img.to(device), gt.to(device)
 
@@ -135,12 +141,30 @@ for epoch in range(epochs_n):
             loss: torch.Tensor = mse_loss_function(pred, gt)
             loss_tower.append(loss)
 
-            acc_04 = number_of_correct_predictions(device, pred, gt, 0.4) / batch_size
-            avg_err_04 = avg_errors_in_wrong_predictions(device, pred, gt, 0.4)
-            acc_05 = number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
-            avg_err_05 = avg_errors_in_wrong_predictions(device, pred, gt, 0.5)
-            acc_08 = number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
-            avg_err_08 = avg_errors_in_wrong_predictions(device, pred, gt, 0.8)
+            acc_04 = (
+                (acc_04 * i)
+                + (number_of_correct_predictions(device, pred, gt, 0.4) / batch_size)
+            ) / (i + 1)
+            avg_err_04 = (
+                (avg_err_04 * i)
+                + avg_errors_in_wrong_predictions(device, pred, gt, 0.4)
+            ) / (i + 1)
+            acc_05 = (
+                (acc_05 * i)
+                + number_of_correct_predictions(device, pred, gt, 0.5) / batch_size
+            ) / (i + 1)
+            avg_err_05 = (
+                (avg_err_05 * i)
+                + avg_errors_in_wrong_predictions(device, pred, gt, 0.5)
+            ) / (i + 1)
+            acc_08 = (
+                (acc_08 * i)
+                + number_of_correct_predictions(device, pred, gt, 0.8) / batch_size
+            ) / (i + 1)
+            avg_err_08 = (
+                (avg_err_08 * i)
+                + avg_errors_in_wrong_predictions(device, pred, gt, 0.8)
+            ) / (i + 1)
 
             tdataloader.set_postfix(
                 loss=loss.item(),

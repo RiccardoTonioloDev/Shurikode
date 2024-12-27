@@ -168,3 +168,7 @@ wandb/
 # PyTorch checkpoints
 *.pth
 *.pth.tar
+
+# DON'T IGNORE
+# !ResNet50_hamming.pth.tar
+!ResNet50.pth.tar
