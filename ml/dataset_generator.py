@@ -171,7 +171,9 @@ if __name__ == "__main__":
         for idx in range(256):
             enc.encode(idx).get_PIL_image().resize(
                 (400, 400), Image.Resampling.BILINEAR
-            ).save(os.path.join(args.val_dir, f"{args.train_variety:03}-{idx:03}.png"))
+            ).save(
+                os.path.join(args.train_dir, f"{args.train_variety:03}-{idx:03}.png")
+            )
         exit(0)
     to_pil_image = transforms.ToPILImage()
     dataloader = shurikode_dataset_generator(
