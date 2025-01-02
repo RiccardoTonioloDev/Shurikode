@@ -36,9 +36,9 @@ pip install .
 ```python
 import shurikode
 
-enc = shurikode.enc(size=10) # The size specifies the size of the scale of the image that will be created.
+enc = shurikode.enc(size=10) # The size specifies the scale of the image that will be generated.
 
-encoded_number = enc.encode(255) # This result remains the encoder class.
+encoded_number = enc.encode(255) # The result remains inside of the encoder object.
 
 encoded_PIL_image = encoded_number.get_PIL_image() # Returns the corresponding PIL image.
 
@@ -58,4 +58,4 @@ bits: Tuple[int,int,int,int,int,int,int,int] = dec(encoded_PIL_image) # Returns 
 
 **NOTE**: the decoder accepts PIL images in RGB format (`Image` type), and PyTorch tensors (`torch.Tensor` type) with both 3 and 4 dimensions.
 
-**IMPORTANT**: no preprocessing is required. The package handles it by itself.
+**IMPORTANT**: no preprocessing is required. The decoder handles it by itself.
