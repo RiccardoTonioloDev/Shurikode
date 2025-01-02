@@ -1,4 +1,4 @@
-import PIL.Image
+from PIL import Image
 from shurikode.shurikode_encoder import shurikode_encoder
 from typing import Tuple
 from torch.utils.data import Dataset, DataLoader
@@ -153,6 +153,12 @@ if __name__ == "__main__":
         help="The variety of each class in the validation dataset.",
         default=30,
     )
+    parser.add_argument(
+        "--add_vanilla",
+        type=int,
+        help="To add the undistorted, vanilla codes to the training set.",
+        default=-1,
+    )
     args = parser.parse_args()
     assert os.path.exists(
         args.train_dir
@@ -160,12 +166,19 @@ if __name__ == "__main__":
     assert os.path.exists(
         args.val_dir
     ), f"The val_dir directory ({args.val_dir}) doesn't exist."
+    if args.add_vanilla != -1:
+        enc = shurikode_encoder(10)
+        for idx in range(256):
+            enc.encode(idx).get_PIL_image().resize(
+                (400, 400), Image.Resampling.BILINEAR
+            ).save(os.path.join(args.val_dir, f"{args.train_variety:03}-{idx:03}.png"))
+        exit(0)
     to_pil_image = transforms.ToPILImage()
     dataloader = shurikode_dataset_generator(
         args.train_variety, 100, 100
     ).make_dataloader(1, False)
     for idx, (img, value) in enumerate(dataloader):
-        pil_image: PIL.Image.Image = to_pil_image(torch.clamp(img[0], 0, 255))
+        pil_image: Image.Image = to_pil_image(torch.clamp(img[0], 0, 255))
         series = int(idx / 256)
         pil_image.save(
             os.path.join(args.train_dir, f"{series:03}-{value.item():03}.png")
@@ -174,6 +187,6 @@ if __name__ == "__main__":
         args.val_variety, 100, 100
     ).make_dataloader(1, False)
     for idx, (img, value) in enumerate(dataloader):
-        pil_image: PIL.Image.Image = to_pil_image(torch.clamp(img[0], 0, 255))
+        pil_image: Image.Image = to_pil_image(torch.clamp(img[0], 0, 255))
         series = int(idx / 256)
         pil_image.save(os.path.join(args.val_dir, f"{series:03}-{value.item():03}.png"))

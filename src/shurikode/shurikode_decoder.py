@@ -32,7 +32,6 @@ class shurikode_decoder:
                 img = img.unsqueeze(0)
         img = torch.nn.functional.interpolate(img, (400, 400), mode="bilinear")
         img = cast(torch.Tensor, img).to(self.__device)
-        img = img / 255
 
         out: torch.Tensor = self.__m(img).squeeze(0)
 
@@ -47,7 +46,4 @@ class shurikode_decoder:
             out[5].item().__int__(),
             out[6].item().__int__(),
             out[7].item().__int__(),
-            # out[9].item().__int__(),
-            # out[10].item().__int__(),
-            # out[11].item().__int__(),
         )
