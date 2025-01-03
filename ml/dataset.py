@@ -45,7 +45,7 @@ class shurikode_dataset(Dataset):
 
         image_shape = image_tensor.shape
         image_tensor = padding_to_counter_ResNet_center_crop(
-            image_tensor, (int(image_shape[-1] * 1.143), int(image_shape[-1] * 1.143))
+            image_tensor, (int(image_shape[-1] * 0.875), int(image_shape[-1] * 0.875))
         )
 
         bit_tensor = torch.zeros([8])
