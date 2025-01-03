@@ -49,6 +49,16 @@ val_variety = 30
 batch_size = 40
 
 optimizer = Adam(m.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-8)
+lambda_fn = lambda epoch: (
+    0.5
+    ** sum(
+        epoch >= milestone
+        for milestone in [0.4 * epochs_n, 0.6 * epochs_n, 0.8 * epochs_n]
+    )
+)
+
+# Initialize LambdaLR
+scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_fn)
 
 wandb.init(
     project="Shurikode_decoder",

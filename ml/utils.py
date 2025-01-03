@@ -1,5 +1,6 @@
 from typing import Dict, Any, Literal, List, Tuple
 
+import torchvision.transforms.v2 as T
 import torch
 import os
 
@@ -133,6 +134,40 @@ def detect_and_correct(hamming: List[int]) -> Tuple[List[int], int]:
             j += 1
 
     return original_bits, error_pos
+
+
+def padding_to_counter_ResNet_center_crop(image_tensor, target_size):
+    """
+    Shrinks the image while keeping the original tensor dimensions by adding a black background.
+
+    Args:
+        image_tensor (torch.Tensor): Input tensor of shape (C, H, W).
+        target_size (tuple): Desired size for the image (target_height, target_width).
+
+    Returns:
+        torch.Tensor: Tensor of the original size with the shrunk image centered and black background.
+    """
+    # Original dimensions
+    _, orig_height, orig_width = image_tensor.shape
+
+    # Resize the image to the target size
+    resize = T.Resize(target_size)
+    resized_image = resize(image_tensor)
+
+    # Create a black background tensor of the original size
+    black_background = torch.zeros_like(image_tensor)
+
+    # Calculate top-left corner for placing the resized image
+    target_height, target_width = target_size
+    start_y = (orig_height - target_height) // 2
+    start_x = (orig_width - target_width) // 2
+
+    # Place the resized image onto the black background
+    black_background[
+        :, start_y : start_y + target_height, start_x : start_x + target_width
+    ] = resized_image
+
+    return black_background
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ from typing import Tuple, Literal
 from torch.utils.data import Dataset, DataLoader
 from torch import Tensor
 from PIL import Image
-from utils import generate_hamming, detect_and_correct
+from utils import generate_hamming, padding_to_counter_ResNet_center_crop
 
 import torchvision.transforms.v2 as transforms
 import torch
@@ -43,8 +43,10 @@ class shurikode_dataset(Dataset):
         except Exception as e:
             raise RuntimeError(f"Error loading image: {image_path}. {e}")
 
-        # multiclass_vector = torch.zeros([256])
-        # multiclass_vector[value] = 1
+        image_shape = image_tensor.shape
+        image_tensor = padding_to_counter_ResNet_center_crop(
+            image_tensor, (int(image_shape[-1] * 1.143), int(image_shape[-1] * 1.143))
+        )
 
         bit_tensor = torch.zeros([8])
         idx = -1
@@ -53,7 +55,7 @@ class shurikode_dataset(Dataset):
             value = value >> 1
             idx -= 1
 
-        return image_tensor, bit_tensor  # , multiclass_vector
+        return image_tensor, bit_tensor
 
     def make_dataloader(
         self,

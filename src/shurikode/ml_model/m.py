@@ -3,15 +3,15 @@ from torch import nn
 from typing import Literal
 
 import torch
-import pkg_resources
+from importlib.resources import files
 
 
 def Create_ResNet50(device: Literal["cuda", "mps", "cpu"]):
     model = models.resnet50()
     model.fc = nn.Linear(model.fc.in_features, 8)
-    checkpoint_path = pkg_resources.resource_filename(
-        "shurikode.ml_model", "ResNet50.pth.tar"
+    checkpoint_path = files("shurikode.ml_model").joinpath("ResNet50.pth.tar")
+    state_dict = torch.load(
+        str(checkpoint_path), map_location=torch.device(device), weights_only=True
     )
-    state_dict = torch.load(checkpoint_path, map_location=torch.device(device))
     model.load_state_dict(state_dict)
     return model
