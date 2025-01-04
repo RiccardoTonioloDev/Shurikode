@@ -17,14 +17,12 @@ import PIL
 
 
 class shurikode_dataset_generator(Dataset):
-    def __init__(self, variety: int = 100, epoch: int = 0, epochs_n: int = 100):
+    def __init__(self, variety: int = 100):
         self.__variety = variety
 
         self.__image_tensorizer = transforms.Compose(
             [transforms.ToImage(), transforms.ToDtype(torch.float32, scale=True)]
         )
-
-        self.__progress = epoch / epochs_n
 
         filler_color = (
             random.random(),
@@ -87,16 +85,16 @@ class shurikode_dataset_generator(Dataset):
         )
 
         aug_choice = random.random()
-        if aug_choice < 0.4 - 0.15 * self.__progress:
+        if aug_choice < 0.2375:
             code_tensor: Tensor = self.__clear_complete_augs(code_tensor)
-        elif aug_choice < 0.6 - 0.10 * self.__progress:
+        elif aug_choice < 0.475:
             code_tensor: Tensor = self.__distorted_complete_augs(code_tensor)
-        elif aug_choice < 0.8 - 0.05 * self.__progress:
+        elif aug_choice < 0.7125:
             code_tensor: Tensor = self.__clear_piece_augs(code_tensor)
-        else:
+        elif aug_choice < 0.95:
             code_tensor: Tensor = self.__distorted_piece_augs(code_tensor)
 
-        return code_tensor.clamp(0, 1).squeeze(0), value
+        return code_tensor.squeeze(0), value
 
     def make_dataloader(
         self,
@@ -153,12 +151,6 @@ if __name__ == "__main__":
         help="The variety of each class in the validation dataset.",
         default=30,
     )
-    parser.add_argument(
-        "--add_vanilla",
-        type=int,
-        help="To add the undistorted, vanilla codes to the training set.",
-        default=-1,
-    )
     args = parser.parse_args()
     assert os.path.exists(
         args.train_dir
@@ -166,18 +158,9 @@ if __name__ == "__main__":
     assert os.path.exists(
         args.val_dir
     ), f"The val_dir directory ({args.val_dir}) doesn't exist."
-    if args.add_vanilla != -1:
-        enc = shurikode_encoder(10)
-        for idx in range(256):
-            enc.encode(idx).get_PIL_image().resize(
-                (400, 400), Image.Resampling.BILINEAR
-            ).save(
-                os.path.join(args.train_dir, f"{args.train_variety:03}-{idx:03}.png")
-            )
-        exit(0)
     to_pil_image = transforms.ToPILImage()
     dataloader = shurikode_dataset_generator(
-        args.train_variety, 100, 100
+        args.train_variety,
     ).make_dataloader(1, False)
     for idx, (img, value) in enumerate(dataloader):
         pil_image: Image.Image = to_pil_image(torch.clamp(img[0], 0, 255))
@@ -186,7 +169,7 @@ if __name__ == "__main__":
             os.path.join(args.train_dir, f"{series:03}-{value.item():03}.png")
         )
     dataloader = shurikode_dataset_generator(
-        args.val_variety, 100, 100
+        args.val_variety,
     ).make_dataloader(1, False)
     for idx, (img, value) in enumerate(dataloader):
         pil_image: Image.Image = to_pil_image(torch.clamp(img[0], 0, 255))

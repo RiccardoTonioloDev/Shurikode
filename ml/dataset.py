@@ -2,7 +2,7 @@ from typing import Tuple, Literal
 from torch.utils.data import Dataset, DataLoader
 from torch import Tensor
 from PIL import Image
-from utils import generate_hamming, padding_to_counter_ResNet_center_crop
+from utils import generate_hamming
 
 import torchvision.transforms.v2 as transforms
 import torch
@@ -44,9 +44,6 @@ class shurikode_dataset(Dataset):
             raise RuntimeError(f"Error loading image: {image_path}. {e}")
 
         image_shape = image_tensor.shape
-        image_tensor = padding_to_counter_ResNet_center_crop(
-            image_tensor, (int(image_shape[-1] * 0.875), int(image_shape[-1] * 0.875))
-        )
 
         bit_tensor = torch.zeros([8])
         idx = -1
