@@ -43,8 +43,6 @@ class shurikode_dataset(Dataset):
         except Exception as e:
             raise RuntimeError(f"Error loading image: {image_path}. {e}")
 
-        image_shape = image_tensor.shape
-
         bit_tensor = torch.zeros([8])
         idx = -1
         while value:

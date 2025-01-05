@@ -44,7 +44,7 @@ m = Create_ResNet50().to(device)
 
 epochs_n = 90
 lr = 1e-4
-train_variety = 401
+train_variety = 400
 val_variety = 30
 batch_size = 40
 
