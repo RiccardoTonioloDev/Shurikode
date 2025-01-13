@@ -136,6 +136,17 @@ def detect_and_correct(hamming: List[int]) -> Tuple[List[int], int]:
     return original_bits, error_pos
 
 
+def acc_for_prob_vec(
+    device: Literal["cpu", "mps", "cuda"], pred: torch.Tensor, gt: torch.Tensor
+) -> float:
+    binary_pred = (pred > 0.5) * torch.ones(pred.shape).to(device)
+    differences_counter = torch.sum(torch.abs(binary_pred - gt), dim=1)
+    wrongs = torch.ones_like(differences_counter) * (differences_counter > 0)
+    batch_size = wrongs.shape[0]
+    corrects = batch_size - wrongs.sum().item().__int__()
+    return corrects / batch_size
+
+
 if __name__ == "__main__":
     hamming = generate_hamming([0, 1, 0, 1, 1, 0, 1, 0])
     print(hamming)

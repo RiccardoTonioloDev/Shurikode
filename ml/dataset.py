@@ -168,7 +168,7 @@ class shurikode_dataset_vector(Dataset):
 
         return 256 * self.__variety
 
-    def __getitem__(self, i: int) -> Tuple[Tensor, Tensor]:
+    def __getitem__(self, i: int) -> Tuple[Tensor, int]:
         value = i % 256
         series = int(i / 256)
 
@@ -184,10 +184,7 @@ class shurikode_dataset_vector(Dataset):
         except Exception as e:
             raise RuntimeError(f"Error loading image: {image_path}. {e}")
 
-        gt = torch.zeros([256])
-        gt[value] = 1
-
-        return image_tensor, gt
+        return image_tensor, value
 
     def make_dataloader(
         self,
