@@ -1,4 +1,4 @@
-from model import Create_ResNet50
+from model import Create_ResNet50_binary
 from dataset import shurikode_dataset
 from losses import mse_loss_function
 from torch.optim import Adam
@@ -40,7 +40,7 @@ elif torch.mps.is_available():
     print("TRAINING ON MPS")
 
 
-m = Create_ResNet50().to(device)
+m = Create_ResNet50_binary().to(device)
 
 epochs_n = 90
 lr = 1e-4

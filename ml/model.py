@@ -356,13 +356,25 @@ class ShortDeepStair(nn.Module):
         )
 
 
-def Create_ResNet50(weights=None, out_features=8):
+def Create_ResNet50_binary(weights=None, out_features=8):
     model = None
     if not weights:
         model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
     else:
         model = models.resnet50()
     model.fc = nn.Linear(model.fc.in_features, out_features)
+    if weights:
+        model.load_state_dict(weights)
+    return model
+
+
+def Create_ResNet50_prob_vec(weights=None, n_classes=256):
+    model = None
+    if not weights:
+        model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
+    else:
+        model = models.resnet50()
+    model.fc = nn.Linear(model.fc.in_features, 256)
     if weights:
         model.load_state_dict(weights)
     return model
@@ -396,7 +408,7 @@ if __name__ == "__main__":
         f"Number of parameters (shortdeepstairs): {sum(p.numel() for p in m.parameters() if p.requires_grad)}"
     )
 
-    m = Create_ResNet50()
+    m = Create_ResNet50_binary()
     x = torch.rand([1, 3, 400, 400])
     print(m(x))
     print(

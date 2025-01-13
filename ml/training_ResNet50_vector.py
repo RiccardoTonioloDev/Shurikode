@@ -1,5 +1,5 @@
-from model import Create_ResNet50_binary
-from dataset import shurikode_dataset_hamming
+from model import Create_ResNet50_prob_vec
+from dataset import shurikode_dataset_vector
 from losses import mse_loss_function
 from torch.optim import Adam
 from tqdm import tqdm
@@ -40,15 +40,25 @@ elif torch.mps.is_available():
     print("TRAINING ON MPS")
 
 
-m = Create_ResNet50_binary(out_features=12).to(device)
+m = Create_ResNet50_prob_vec().to(device)
 
 epochs_n = 90
 lr = 1e-4
 train_variety = 400
 val_variety = 30
-batch_size = 32
+batch_size = 40
 
 optimizer = Adam(m.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-8)
+lambda_fn = lambda epoch: (
+    0.5
+    ** sum(
+        epoch >= milestone
+        for milestone in [0.4 * epochs_n, 0.6 * epochs_n, 0.8 * epochs_n]
+    )
+)
+
+# Initialize LambdaLR
+scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_fn)
 
 wandb.init(
     project="Shurikode_decoder",
@@ -62,11 +72,11 @@ wandb.init(
 is_first_epoch = True
 min_loss = torch.Tensor([0]).to(device)
 checkpoint_files: List[str] = []
-train_dataset = shurikode_dataset_hamming(
+train_dataset = shurikode_dataset_vector(
     data_path=args.datasets_path, type="train", variety=train_variety
 )
 train_dataloader = train_dataset.make_dataloader(batch_size=batch_size)
-val_dataset = shurikode_dataset_hamming(
+val_dataset = shurikode_dataset_vector(
     data_path=args.datasets_path, type="val", variety=val_variety
 )
 val_dataloader = val_dataset.make_dataloader(batch_size=batch_size)

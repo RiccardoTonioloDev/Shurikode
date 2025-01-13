@@ -3,7 +3,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from typing import Literal
 from utils import avg_errors_in_wrong_predictions, number_of_correct_predictions
-from model import Create_ResNet50
+from model import Create_ResNet50_binary
 from dataset import shurikode_dataset, shurikode_dataset_hamming
 
 import torch
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     device = "cuda"
 
     state_dict = torch.load(os.path.join(checkpoints_dir, checkpoints_to_use))
-    m = Create_ResNet50(state_dict, 8).to(device)
+    m = Create_ResNet50_binary(state_dict, 8).to(device)
     dataloader = shurikode_dataset(datasets_dir, "val", 30).make_dataloader(1, False)
 
     validate(m, dataloader, device, 1)
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     checkpoints_to_use = "checkpoint_e089_ResNet50_hamming_sig.pth.tar"
 
     state_dict = torch.load(os.path.join(checkpoints_dir, checkpoints_to_use))
-    m = Create_ResNet50(state_dict, 12).to(device)
+    m = Create_ResNet50_binary(state_dict, 12).to(device)
     dataloader = shurikode_dataset_hamming(datasets_dir, "val", 30).make_dataloader(
         1, False
     )
