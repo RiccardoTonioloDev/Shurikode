@@ -1,4 +1,6 @@
 from shurikode import enc, dec
+import torchvision.transforms.v2 as transforms
+import torch
 
 import pytest
 import shurikode
@@ -7,6 +9,13 @@ import shurikode.shurikode_encoder
 
 
 indices = list(range(256))
+
+image_tensorizer = transforms.Compose(
+    [
+        transforms.ToImage(),
+        transforms.ToDtype(torch.float32, scale=False),
+    ]
+)
 
 
 @pytest.fixture(scope="module")
@@ -26,12 +35,7 @@ def test_decoding_of(
     decoder: shurikode.shurikode_decoder.shurikode_decoder,
 ):
     number_img = encoder.encode(value).get_PIL_image()
+    tensor_img: torch.Tensor = image_tensorizer(number_img).unsqueeze(0)
+    tensor_img = torch.nn.functional.pad(tensor_img, (80, 80, 80, 80), "constant", 0)
     decoded_value = decoder(number_img)
-    bit_list = [0] * 8
-    idx = -1
-    while value:
-        bit_list[idx] = 1 & value
-        value = value >> 1
-        idx -= 1
-    for p, gt in zip(decoded_value, bit_list):
-        assert p == gt
+    assert value == decoded_value

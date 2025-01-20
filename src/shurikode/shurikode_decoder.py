@@ -4,6 +4,7 @@ from PIL.Image import Image
 import torchvision.transforms.v2 as transforms
 
 import torch
+import torchvision
 
 
 class shurikode_decoder:
@@ -22,9 +23,7 @@ class shurikode_decoder:
             ]
         )
 
-    def __call__(
-        self, img: Union[Image, torch.Tensor]
-    ) -> Tuple[int, int, int, int, int, int, int, int]:
+    def __call__(self, img: Union[Image, torch.Tensor]) -> int:
         if isinstance(img, Image):
             img = self.__image_tensorizer(img)
         if isinstance(img, torch.Tensor):
@@ -33,17 +32,6 @@ class shurikode_decoder:
         img = torch.nn.functional.interpolate(img, (400, 400), mode="bilinear")
         img = cast(torch.Tensor, img).to(self.__device)
 
-        out: torch.Tensor = self.__m(img).squeeze(0)
+        out: torch.Tensor = torch.softmax(self.__m(img), 1).squeeze(0)
 
-        out = (out > 0.5) * torch.ones(out.shape).to(self.__device)
-
-        return (
-            out[0].item().__int__(),
-            out[1].item().__int__(),
-            out[2].item().__int__(),
-            out[3].item().__int__(),
-            out[4].item().__int__(),
-            out[5].item().__int__(),
-            out[6].item().__int__(),
-            out[7].item().__int__(),
-        )
+        return out.argmax(-1).item().__int__()

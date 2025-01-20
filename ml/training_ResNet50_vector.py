@@ -116,9 +116,7 @@ for epoch in range(epochs_n):
 
             pred: torch.Tensor = m(img)
 
-            acc = ((acc * i) + (acc_for_prob_vec(device, pred, gt) / batch_size)) / (
-                i + 1
-            )
+            acc = ((acc * i) + acc_for_prob_vec(device, pred, gt)) / (i + 1)
 
             # loss: torch.Tensor = mse_loss_function(pred, gt)
             loss: torch.Tensor = loss_function(pred, gt)
@@ -141,6 +139,7 @@ for epoch in range(epochs_n):
                 if os.path.exists(ckpt_file):
                     os.remove(ckpt_file)
             checkpoint_files = checkpoint_files[-1:]
+
 checkpoint_filename = save_model(
     args.checkpoints_dir,
     f"final_{args.exp_name}",

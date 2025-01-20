@@ -67,7 +67,7 @@ class PieceCutter:
         pass
 
     def __call__(self, img: torch.Tensor, filler_color: List[float]):
-        portion_size_percentage = 0.3 + 0.2 * random.random()
+        portion_size_percentage = 0.4 + 0.2 * random.random()
         portion_size = int(img.shape[-1] * portion_size_percentage)
         is_side = random.random() > 0.5
         if not is_side:
