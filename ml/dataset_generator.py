@@ -269,7 +269,7 @@ if __name__ == "__main__":
         pil_image.save(
             os.path.join(args.train_dir, f"{series:03}-{value.item():03}.png")
         )
-    dataloader = shurikode_dataset_generator(
+    dataloader = shurikode_dataset_generator_V3(
         args.val_variety,
     ).make_dataloader(1, False)
     for idx, (img, value) in enumerate(dataloader):

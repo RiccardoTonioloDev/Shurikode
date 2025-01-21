@@ -65,7 +65,7 @@ wandb.init(
 )
 
 is_first_epoch = True
-min_loss = torch.Tensor([0]).to(device)
+min_acc = 0
 checkpoint_files: List[str] = []
 train_dataset = shurikode_dataset_vector(
     data_path=args.datasets_path, type="train", variety=train_variety
@@ -106,7 +106,6 @@ for epoch in range(epochs_n):
 
     ############################################ VALIDATION ###########################################
     tdataloader = tqdm(val_dataloader, unit="batch")
-    loss_tower = []
     acc = 0
     with torch.no_grad():
         m.eval()
@@ -120,14 +119,12 @@ for epoch in range(epochs_n):
 
             # loss: torch.Tensor = mse_loss_function(pred, gt)
             loss: torch.Tensor = loss_function(pred, gt)
-            loss_tower.append(loss)
 
             tdataloader.set_postfix(loss=loss.item(), acc=acc)
 
-        avg_loss = sum(loss_tower) / len(loss_tower)
-        if is_first_epoch or avg_loss < min_loss:
+        if is_first_epoch or acc < min_acc:
             is_first_epoch = False
-            min_loss = avg_loss
+            min_acc = acc
 
             checkpoint_filename = save_model(
                 args.checkpoints_dir,
