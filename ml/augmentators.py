@@ -111,6 +111,6 @@ class RandomScaler:
             img.unsqueeze(0), (pad, pad, pad, pad), "constant", 0
         )
         img = torch.nn.functional.interpolate(
-            img, (self.__diagonal, self.__diagonal), mode="bilinear"
+            img, (3, self.__diagonal, self.__diagonal), mode="bilinear"
         )
         return img.squeeze(0)
