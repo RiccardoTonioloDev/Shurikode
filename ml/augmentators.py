@@ -54,8 +54,13 @@ class RandomRotationPerspectiveWithColor:
 
     def __call__(self, img: torch.Tensor):
         filler_color = [random.random(), random.random(), random.random()]
+        # ----------- THE PROBLEM IS NOT HERE
         img = self.__rotation(img, filler_color)
+        print(f"IMG SHAPE RP-ROTATION {img.shape}")
         img = self.__perspective(img, filler_color)
+        print(f"IMG SHAPE RP-PERSPECTIVE {img.shape}")
+        img = img.unsqueeze(0)
+        print(f"IMG SHAPE RP-UNSQUEEZED {img.shape}")
         return torch.nn.functional.interpolate(
             img, (self.__diagonal, self.__diagonal), mode="bilinear"
         )
@@ -94,6 +99,10 @@ class RandomPerspectivePieceCutter:
 
     def __call__(self, img: torch.Tensor):
         filler_color = [random.random(), random.random(), random.random()]
+        assert (
+            len(img.shape) == 3
+        ), "The shape of the input tensor for this module must be 3D."
+        img = img.unsqueeze(0)
         img = self.__piece(img, filler_color)
         return self.__perspective(img, filler_color)
 
@@ -107,9 +116,14 @@ class RandomScaler:
     def __call__(self, img: torch.Tensor):
         r = random.random()
         pad = int((self.__max_pad - self.__min_pad) * r + self.__min_pad)
-        img = torch.nn.functional.pad(img, (pad, pad, pad, pad), "constant", 0)
-        img = img.unsqueeze(0)
+        print(f"PADDING SIZE {pad}")
+        print(f"IMG SHAPE ORIGINAL {img.shape}")
+        img = torch.nn.functional.pad(
+            img, (pad, pad, pad, pad), "constant", 0
+        ).unsqueeze(0)
+        print(f"IMG SHAPE PADDED {img.shape}")
         img = torch.nn.functional.interpolate(
             img, (self.__diagonal, self.__diagonal), mode="bilinear"
         )
+        print(f"IMG SHAPE AFTER {img.shape}")
         return img.squeeze(0)

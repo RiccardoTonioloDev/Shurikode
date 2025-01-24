@@ -186,21 +186,17 @@ class shurikode_dataset_generator_V3(Dataset):
 
         code_tensor = torch.nn.functional.interpolate(
             code_tensor, (400, 400), mode="bilinear"
-        )
+        ).squeeze(0)
 
         aug_choice = random.random()
         if aug_choice < 0.25:
             code_tensor: Tensor = self.__clear_complete_augs(code_tensor)
-            print("NESSUN PROBLEMA <0.25")
         elif aug_choice < 0.50:
             code_tensor: Tensor = self.__semidistorted_complete_augs(code_tensor)
-            print("NESSUN PROBLEMA <0.50")
         elif aug_choice < 0.75:
             code_tensor: Tensor = self.__clear_piece_augs(code_tensor)
-            print("NESSUN PROBLEMA <0.75")
         else:
             code_tensor: Tensor = self.__distorted_complete_augs(code_tensor)
-            print("NESSUN PROBLEMA <1")
 
         return code_tensor.squeeze(0), value
 
