@@ -117,7 +117,6 @@ for epoch in range(epochs_n):
 
             acc = ((acc * i) + acc_for_prob_vec(device, pred, gt)) / (i + 1)
 
-            # loss: torch.Tensor = mse_loss_function(pred, gt)
             loss: torch.Tensor = loss_function(pred, gt)
 
             tdataloader.set_postfix(loss=loss.item(), acc=acc)
