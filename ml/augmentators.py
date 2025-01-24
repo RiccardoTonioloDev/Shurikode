@@ -108,7 +108,9 @@ class RandomScaler:
         r = random.random()
         pad = int((self.__max_pad - self.__min_pad) * r + self.__min_pad)
         img = torch.nn.functional.pad(img, (pad, pad, pad, pad), "constant", 0)
+        img = img.unsqueeze(0)
+        print("################ IMG.SHAPE = ", img.shape)
         img = torch.nn.functional.interpolate(
-            img.unsqueeze(0), (self.__diagonal, self.__diagonal), mode="bilinear"
+            img, (self.__diagonal, self.__diagonal), mode="bilinear"
         )
         return img.squeeze(0)
