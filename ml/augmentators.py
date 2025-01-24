@@ -46,7 +46,7 @@ class RandomRotationPerspectiveWithColor:
         degrees_rotation=[-90, 90],
         p_perspective=0.5,
         distortion_scale=0.5,
-        diagonal=600,
+        diagonal=400,
     ):
         self.__rotation = RandomRotationWithColor(degrees_rotation, True)
         self.__perspective = RandomPerspectiveWithColor(distortion_scale, p_perspective)
@@ -62,7 +62,7 @@ class RandomRotationPerspectiveWithColor:
 
 
 class PieceCutter:
-    def __init__(self, diagonal=600):
+    def __init__(self, diagonal=400):
         self.__diagonal = diagonal
         pass
 
@@ -88,7 +88,7 @@ class PieceCutter:
 
 
 class RandomPerspectivePieceCutter:
-    def __init__(self, p_perspective=0.5, distortion_scale=0.5, diagonal=600):
+    def __init__(self, p_perspective=0.5, distortion_scale=0.5, diagonal=400):
         self.__piece = PieceCutter(diagonal)
         self.__perspective = RandomPerspectiveWithColor(distortion_scale, p_perspective)
 
@@ -96,3 +96,21 @@ class RandomPerspectivePieceCutter:
         filler_color = [random.random(), random.random(), random.random()]
         img = self.__piece(img, filler_color)
         return self.__perspective(img, filler_color)
+
+
+class RandomScaler:
+    def __init__(self, min_pad=0.0, max_pad=0.3, diagonal=400):
+        self.__min_pad = min_pad * diagonal
+        self.__max_pad = max_pad * diagonal
+        self.__diagonal = diagonal
+
+    def __call__(self, img: torch.Tensor):
+        r = random.random()
+        pad = int((self.__max_pad - self.__min_pad) * r)
+        img = torch.nn.functional.pad(
+            img.unsqueeze(0), (pad, pad, pad, pad), "constant", 0
+        )
+        img = torch.nn.functional.interpolate(
+            img, (self.__diagonal, self.__diagonal), mode="bilinear"
+        )
+        return img.squeeze(0)

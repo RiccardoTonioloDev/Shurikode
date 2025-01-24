@@ -36,6 +36,6 @@ def test_decoding_of(
 ):
     number_img = encoder.encode(value).get_PIL_image()
     tensor_img: torch.Tensor = image_tensorizer(number_img).unsqueeze(0)
-    tensor_img = torch.nn.functional.pad(tensor_img, (80, 80, 80, 80), "constant", 0)
+    tensor_img = torch.nn.functional.pad(tensor_img, (60, 60, 60, 60), "constant", 0)
     decoded_value = decoder(number_img)
     assert value == decoded_value

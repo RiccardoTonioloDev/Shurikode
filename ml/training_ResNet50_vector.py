@@ -65,7 +65,7 @@ wandb.init(
 )
 
 is_first_epoch = True
-min_acc = 0
+max_acc = 0
 checkpoint_files: List[str] = []
 train_dataset = shurikode_dataset_vector(
     data_path=args.datasets_path, type="train", variety=train_variety
@@ -122,9 +122,8 @@ for epoch in range(epochs_n):
 
             tdataloader.set_postfix(loss=loss.item(), acc=acc)
 
-        if is_first_epoch or acc < min_acc:
-            is_first_epoch = False
-            min_acc = acc
+        if acc > max_acc:
+            max_acc = acc
 
             checkpoint_filename = save_model(
                 args.checkpoints_dir,
