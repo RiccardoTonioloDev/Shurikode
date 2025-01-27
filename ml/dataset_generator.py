@@ -7,6 +7,7 @@ from augmentators import (
     RandomRotationPerspectiveWithColor,
     RandomPerspectivePieceCutter,
     RandomScaler,
+    RandomScaleRotationPerspectiveWithColor,
 )
 
 import torchvision.transforms.v2 as transforms
@@ -143,15 +144,13 @@ class shurikode_dataset_generator_V3(Dataset):
 
         self.__clear_complete_augs = transforms.Compose(
             [
-                RandomScaler(0, 0.3, 400),
-                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2, 400),
+                RandomScaleRotationPerspectiveWithColor(0, 0.3, [-90, 90], 1, 0.2, 400),
             ]
         )
 
         self.__semidistorted_complete_augs = transforms.Compose(
             [
-                RandomScaler(0, 0.3, 400),
-                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2, 400),
+                RandomScaleRotationPerspectiveWithColor(0, 0.3, [-90, 90], 1, 0.2, 400),
                 transforms.GaussianBlur(25, 10),
             ]
         )
@@ -165,7 +164,7 @@ class shurikode_dataset_generator_V3(Dataset):
 
         self.__distorted_complete_augs = transforms.Compose(
             [
-                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2, 400),
+                RandomScaleRotationPerspectiveWithColor(0, 0.3, [-90, 90], 1, 0.2, 400),
                 transforms.GaussianBlur(25, 10),
                 transforms.RandomErasing(1, (0.1, 0.4)),
             ]

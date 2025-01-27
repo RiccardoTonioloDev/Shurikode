@@ -1,6 +1,6 @@
 from torchvision.transforms.v2 import functional as F, InterpolationMode
 import torchvision.transforms.v2 as transforms
-from typing import List
+from typing import List, Tuple
 
 import torch
 import random
@@ -56,11 +56,8 @@ class RandomRotationPerspectiveWithColor:
         filler_color = [random.random(), random.random(), random.random()]
         # ----------- THE PROBLEM IS NOT HERE
         img = self.__rotation(img, filler_color)
-        print(f"IMG SHAPE RP-ROTATION {img.shape}")
         img = self.__perspective(img, filler_color)
-        print(f"IMG SHAPE RP-PERSPECTIVE {img.shape}")
         img = img.unsqueeze(0)
-        print(f"IMG SHAPE RP-UNSQUEEZED {img.shape}")
         return torch.nn.functional.interpolate(
             img, (self.__diagonal, self.__diagonal), mode="bilinear"
         )
@@ -113,17 +110,38 @@ class RandomScaler:
         self.__max_pad = max_pad * diagonal
         self.__diagonal = diagonal
 
-    def __call__(self, img: torch.Tensor):
+    def __call__(self, img: torch.Tensor, color: List[float]):
         r = random.random()
         pad = int((self.__max_pad - self.__min_pad) * r + self.__min_pad)
-        print(f"PADDING SIZE {pad}")
-        print(f"IMG SHAPE ORIGINAL {img.shape}")
-        img = torch.nn.functional.pad(
-            img, (pad, pad, pad, pad), "constant", 0
-        ).unsqueeze(0)
-        print(f"IMG SHAPE PADDED {img.shape}")
+        padder = transforms.Pad(padding=pad, fill=color, padding_mode="constant")
+        img = padder(img).unsqueeze(0)
         img = torch.nn.functional.interpolate(
             img, (self.__diagonal, self.__diagonal), mode="bilinear"
         )
-        print(f"IMG SHAPE AFTER {img.shape}")
         return img.squeeze(0)
+
+
+class RandomScaleRotationPerspectiveWithColor:
+    def __init__(
+        self,
+        min_pad=0.0,
+        max_pad=0.3,
+        degrees_rotation=[-90, 90],
+        p_perspective=0.5,
+        distortion_scale=0.5,
+        diagonal=400,
+    ):
+        self.__scaler = RandomScaler(min_pad, max_pad, diagonal)
+        self.__rotation = RandomRotationWithColor(degrees_rotation, True)
+        self.__perspective = RandomPerspectiveWithColor(distortion_scale, p_perspective)
+        self.__diagonal = diagonal
+
+    def __call__(self, img: torch.Tensor):
+        filler_color = [random.random(), random.random(), random.random()]
+        img = self.__scaler(img, filler_color)
+        img = self.__rotation(img, filler_color)
+        img = self.__perspective(img, filler_color)
+        img = img.unsqueeze(0)
+        return torch.nn.functional.interpolate(
+            img, (self.__diagonal, self.__diagonal), mode="bilinear"
+        )
