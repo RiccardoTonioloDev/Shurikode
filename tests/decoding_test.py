@@ -4,6 +4,7 @@ import torch
 
 import pytest
 import shurikode
+import random
 import shurikode.shurikode_decoder
 import shurikode.shurikode_encoder
 
@@ -13,9 +14,20 @@ indices = list(range(256))
 image_tensorizer = transforms.Compose(
     [
         transforms.ToImage(),
-        transforms.ToDtype(torch.float32, scale=False),
+        transforms.ToDtype(torch.float32, scale=True),
     ]
 )
+
+augmentators_1 = transforms.Pad(
+    padding=8,
+    fill=[
+        random.random(),
+        random.random(),
+        random.random(),
+    ],
+    padding_mode="constant",
+)
+# augmentators_2 = transforms.GaussianBlur(25, 10)
 
 
 @pytest.fixture(scope="module")
@@ -36,6 +48,13 @@ def test_decoding_of(
 ):
     number_img = encoder.encode(value).get_PIL_image()
     tensor_img: torch.Tensor = image_tensorizer(number_img).unsqueeze(0)
-    tensor_img = torch.nn.functional.pad(tensor_img, (60, 60, 60, 60), "constant", 0)
+    tensor_img = torch.nn.functional.interpolate(
+        tensor_img, (400, 400), mode="bilinear"
+    )
+    tensor_img = augmentators_1(tensor_img)
+    # tensor_img = torch.nn.functional.interpolate(
+    #     tensor_img, (400, 400), mode="bilinear"
+    # )
+    # tensor_img = augmentators_2(tensor_img)
     decoded_value = decoder(number_img)
     assert value == decoded_value

@@ -6,7 +6,6 @@ from torch import Tensor
 from augmentators import (
     RandomRotationPerspectiveWithColor,
     RandomPerspectivePieceCutter,
-    RandomScaler,
     RandomScaleRotationPerspectiveWithColor,
 )
 
@@ -15,7 +14,6 @@ import torch
 import random
 import os
 import argparse
-import PIL
 
 
 class shurikode_dataset_generator(Dataset):
@@ -144,27 +142,33 @@ class shurikode_dataset_generator_V3(Dataset):
 
         self.__clear_complete_augs = transforms.Compose(
             [
-                RandomScaleRotationPerspectiveWithColor(0, 0.3, [-90, 90], 1, 0.2, 400),
+                RandomScaleRotationPerspectiveWithColor(
+                    0.0, 0.03, [-3, 3], 1, 0.05, 400
+                ),
             ]
         )
 
         self.__semidistorted_complete_augs = transforms.Compose(
             [
-                RandomScaleRotationPerspectiveWithColor(0, 0.3, [-90, 90], 1, 0.2, 400),
+                RandomScaleRotationPerspectiveWithColor(
+                    0.0, 0.03, [-3, 3], 1, 0.05, 400
+                ),
                 transforms.GaussianBlur(25, 10),
             ]
         )
 
         self.__clear_piece_augs = transforms.Compose(
             [
-                RandomPerspectivePieceCutter(1, 0.3, 400),
+                RandomPerspectivePieceCutter(1, 0.05, 400),
                 transforms.GaussianBlur(7, (1.5, 2.5)),
             ]
         )
 
         self.__distorted_complete_augs = transforms.Compose(
             [
-                RandomScaleRotationPerspectiveWithColor(0, 0.3, [-90, 90], 1, 0.2, 400),
+                RandomScaleRotationPerspectiveWithColor(
+                    0.0, 0.03, [-3, 3], 1, 0.05, 400
+                ),
                 transforms.GaussianBlur(25, 10),
                 transforms.RandomErasing(1, (0.1, 0.4)),
             ]
@@ -188,11 +192,11 @@ class shurikode_dataset_generator_V3(Dataset):
         ).squeeze(0)
 
         aug_choice = random.random()
-        if aug_choice < 0.25:
+        if aug_choice < 0.4:
             code_tensor: Tensor = self.__clear_complete_augs(code_tensor)
-        elif aug_choice < 0.50:
+        elif aug_choice < 0.60:
             code_tensor: Tensor = self.__semidistorted_complete_augs(code_tensor)
-        elif aug_choice < 0.75:
+        elif aug_choice < 0.80:
             code_tensor: Tensor = self.__clear_piece_augs(code_tensor)
         else:
             code_tensor: Tensor = self.__distorted_complete_augs(code_tensor)

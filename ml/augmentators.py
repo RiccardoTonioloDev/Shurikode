@@ -114,11 +114,8 @@ class RandomScaler:
         r = random.random()
         pad = int((self.__max_pad - self.__min_pad) * r + self.__min_pad)
         padder = transforms.Pad(padding=pad, fill=color, padding_mode="constant")
-        img = padder(img).unsqueeze(0)
-        img = torch.nn.functional.interpolate(
-            img, (self.__diagonal, self.__diagonal), mode="bilinear"
-        )
-        return img.squeeze(0)
+        img = padder(img)
+        return img
 
 
 class RandomScaleRotationPerspectiveWithColor:
