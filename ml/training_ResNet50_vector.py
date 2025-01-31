@@ -76,7 +76,7 @@ val_dataset = shurikode_dataset_vector(
 )
 val_dataloader = val_dataset.make_dataloader(batch_size=batch_size)
 
-loss_function = torch.nn.CrossEntropyLoss()
+loss_function = torch.nn.CrossEntropyLoss(label_smoothing=0.2)
 
 for epoch in range(epochs_n):
 

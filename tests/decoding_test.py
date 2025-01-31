@@ -27,7 +27,7 @@ augmentators_1 = transforms.Pad(
     ],
     padding_mode="constant",
 )
-# augmentators_2 = transforms.GaussianBlur(25, 10)
+augmentators_2 = transforms.GaussianBlur(25, 10)
 
 
 @pytest.fixture(scope="module")
@@ -52,9 +52,9 @@ def test_decoding_of(
         tensor_img, (400, 400), mode="bilinear"
     )
     tensor_img = augmentators_1(tensor_img)
-    # tensor_img = torch.nn.functional.interpolate(
-    #     tensor_img, (400, 400), mode="bilinear"
-    # )
-    # tensor_img = augmentators_2(tensor_img)
-    decoded_value = decoder(number_img)
+    tensor_img = torch.nn.functional.interpolate(
+        tensor_img, (400, 400), mode="bilinear"
+    )
+    tensor_img = augmentators_2(tensor_img)
+    decoded_value = decoder(tensor_img)
     assert value == decoded_value
