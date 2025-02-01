@@ -8,7 +8,8 @@ class shurikode_encoder:
         self.__matrix = np.zeros([10, 10])
 
     def encode(self, value: int) -> "shurikode_encoder":
-        assert value < 256, "The value must be less the n 256."
+        assert value < 256, "The value must be less then 256."
+        assert value >= 0, "The value must be greater or equal to 0."
         bit_array = [0] * 8
         i = -1
         while value:
