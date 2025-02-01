@@ -55,6 +55,7 @@ def test_decoding_of(
     tensor_img = torch.nn.functional.interpolate(
         tensor_img, (400, 400), mode="bilinear"
     )
+    decoded_value_1 = decoder(tensor_img)
     tensor_img = augmentators_2(tensor_img)
-    decoded_value = decoder(tensor_img)
-    assert value == decoded_value
+    decoded_value_2 = decoder(tensor_img)
+    assert value == decoded_value_2 and decoded_value_1 == value
