@@ -47,11 +47,11 @@ def test_decoding_of(
     decoder: shurikode.shurikode_decoder.shurikode_decoder,
 ):
     number_img = encoder.encode(value).get_PIL_image()
+    decoded_value_0 = decoder(number_img)
     tensor_img: torch.Tensor = image_tensorizer(number_img).unsqueeze(0)
     tensor_img = torch.nn.functional.interpolate(
         tensor_img, (400, 400), mode="bilinear"
     )
-    decoded_value_0 = decoder(tensor_img)
     tensor_img = augmentators_1(tensor_img)
     tensor_img = torch.nn.functional.interpolate(
         tensor_img, (400, 400), mode="bilinear"
