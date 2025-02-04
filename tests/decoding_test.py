@@ -36,18 +36,23 @@ def encoder():
 
 
 @pytest.fixture(scope="module")
-def decoder():
+def decoder_r50():
     return dec()
 
 
+@pytest.fixture(scope="module")
+def decoder_r18():
+    return dec("r18")
+
+
 @pytest.mark.parametrize("value", indices)
-def test_decoding_of(
+def test_decoding_r50(
     value: int,
     encoder: shurikode.shurikode_encoder.shurikode_encoder,
-    decoder: shurikode.shurikode_decoder.shurikode_decoder,
+    decoder_r50: shurikode.shurikode_decoder.shurikode_decoder,
 ):
     number_img = encoder.encode(value).get_PIL_image()
-    decoded_value_0 = decoder(number_img)
+    decoded_value_0 = decoder_r50(number_img)
     tensor_img: torch.Tensor = image_tensorizer(number_img).unsqueeze(0)
     tensor_img = torch.nn.functional.interpolate(
         tensor_img, (400, 400), mode="bilinear"
@@ -56,9 +61,35 @@ def test_decoding_of(
     tensor_img = torch.nn.functional.interpolate(
         tensor_img, (400, 400), mode="bilinear"
     )
-    decoded_value_1 = decoder(tensor_img)
+    decoded_value_1 = decoder_r50(tensor_img)
     tensor_img = augmentators_2(tensor_img)
-    decoded_value_2 = decoder(tensor_img)
+    decoded_value_2 = decoder_r50(tensor_img)
+    assert (
+        value == decoded_value_2
+        and value == decoded_value_1
+        and value == decoded_value_0
+    )
+
+
+@pytest.mark.parametrize("value", indices)
+def test_decoding_r18(
+    value: int,
+    encoder: shurikode.shurikode_encoder.shurikode_encoder,
+    decoder_r18: shurikode.shurikode_decoder.shurikode_decoder,
+):
+    number_img = encoder.encode(value).get_PIL_image()
+    decoded_value_0 = decoder_r18(number_img)
+    tensor_img: torch.Tensor = image_tensorizer(number_img).unsqueeze(0)
+    tensor_img = torch.nn.functional.interpolate(
+        tensor_img, (400, 400), mode="bilinear"
+    )
+    tensor_img = augmentators_1(tensor_img)
+    tensor_img = torch.nn.functional.interpolate(
+        tensor_img, (400, 400), mode="bilinear"
+    )
+    decoded_value_1 = decoder_r18(tensor_img)
+    tensor_img = augmentators_2(tensor_img)
+    decoded_value_2 = decoder_r18(tensor_img)
     assert (
         value == decoded_value_2
         and value == decoded_value_1

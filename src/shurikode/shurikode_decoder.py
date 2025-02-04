@@ -1,21 +1,23 @@
-from shurikode.ml_model.m import Create_ResNet50
-from typing import Tuple, Union, cast
+from shurikode.ml_model.m import Create_ResNet50, Create_ResNet18
+from typing import Literal, Union, cast
 from PIL.Image import Image
 import torchvision.transforms.v2 as transforms
 
 import torch
-import torchvision
 
 
 class shurikode_decoder:
-    def __init__(self):
+    def __init__(self, m: Literal["r18", "r50"] = "r50"):
         device = "cpu"
         if torch.cuda.is_available():
             device = "cuda"
         elif torch.mps.is_available():
             device = "mps"
         self.__device = device
-        self.__m = Create_ResNet50(device).to(device)
+        if m == "r50":
+            self.__m = Create_ResNet50(device).to(device)
+        elif m == "r18":
+            self.__m = Create_ResNet18(device).to(device)
         self.__image_tensorizer = transforms.Compose(
             [
                 transforms.ToImage(),
