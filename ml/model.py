@@ -383,7 +383,7 @@ def Create_ResNet50_prob_vec(weights=None, n_classes=256):
 def Create_ResNet34_prob_vec(weights=None, n_classes=256):
     model = None
     if not weights:
-        model = models.resnet34(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+        model = models.resnet34(weights=models.ResNet34_Weights.IMAGENET1K_V1)
     else:
         model = models.resnet34()
     model.fc = nn.Linear(model.fc.in_features, n_classes)
