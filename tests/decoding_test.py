@@ -41,6 +41,11 @@ def decoder_r50():
 
 
 @pytest.fixture(scope="module")
+def decoder_r34():
+    return dec("r34")
+
+
+@pytest.fixture(scope="module")
 def decoder_r18():
     return dec("r18")
 
@@ -90,6 +95,32 @@ def test_decoding_r18(
     decoded_value_1 = decoder_r18(tensor_img)
     tensor_img = augmentators_2(tensor_img)
     decoded_value_2 = decoder_r18(tensor_img)
+    assert (
+        value == decoded_value_2
+        and value == decoded_value_1
+        and value == decoded_value_0
+    )
+
+
+@pytest.mark.parametrize("value", indices)
+def test_decoding_r34(
+    value: int,
+    encoder: shurikode.shurikode_encoder.shurikode_encoder,
+    decoder_r34: shurikode.shurikode_decoder.shurikode_decoder,
+):
+    number_img = encoder.encode(value).get_PIL_image()
+    decoded_value_0 = decoder_r34(number_img)
+    tensor_img: torch.Tensor = image_tensorizer(number_img).unsqueeze(0)
+    tensor_img = torch.nn.functional.interpolate(
+        tensor_img, (400, 400), mode="bilinear"
+    )
+    tensor_img = augmentators_1(tensor_img)
+    tensor_img = torch.nn.functional.interpolate(
+        tensor_img, (400, 400), mode="bilinear"
+    )
+    decoded_value_1 = decoder_r34(tensor_img)
+    tensor_img = augmentators_2(tensor_img)
+    decoded_value_2 = decoder_r34(tensor_img)
     assert (
         value == decoded_value_2
         and value == decoded_value_1

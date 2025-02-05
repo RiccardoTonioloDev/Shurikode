@@ -1,4 +1,4 @@
-from shurikode.ml_model.m import Create_ResNet50, Create_ResNet18
+from shurikode.ml_model.m import Create_ResNet50, Create_ResNet18, Create_ResNet34
 from typing import Literal, Union, cast
 from PIL.Image import Image
 import torchvision.transforms.v2 as transforms
@@ -7,7 +7,7 @@ import torch
 
 
 class shurikode_decoder:
-    def __init__(self, m: Literal["r18", "r50"] = "r50"):
+    def __init__(self, m: Literal["r18", "r34", "r50"] = "r50"):
         device = "cpu"
         if torch.cuda.is_available():
             device = "cuda"
@@ -16,6 +16,9 @@ class shurikode_decoder:
         self.__device = device
         if m == "r50":
             self.__m = Create_ResNet50(device).to(device)
+        elif m == "r34":
+            assert False, "ResNet34 not available yet."
+            self.__m = Create_ResNet34(device).to(device)
         elif m == "r18":
             self.__m = Create_ResNet18(device).to(device)
         self.__image_tensorizer = transforms.Compose(
@@ -35,5 +38,4 @@ class shurikode_decoder:
         img = cast(torch.Tensor, img).to(self.__device)
 
         out: torch.Tensor = torch.softmax(self.__m(img), 1).squeeze(0)
-
         return out.argmax(-1).item().__int__()
