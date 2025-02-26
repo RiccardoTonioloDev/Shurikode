@@ -4,12 +4,15 @@ from typing import Tuple
 from torch.utils.data import Dataset, DataLoader
 from torch import Tensor
 from augmentators import (
-    RandomRotationPerspectiveWithColor,
-    RandomPerspectivePieceCutter,
-    RandomScaleRotationPerspectiveWithColor,
+    AugmentatorIf,
+    RandomRotationDynamicFillerColor,
+    RandomPerspectiveDynamicFillerColor,
+    RandomScalerDynamicFillerColor,
+    RandomWaveDistortion,
+    RandomizeAugmentator,
 )
 
-import torchvision.transforms.v2 as transforms
+import torchvision.transforms.v2 as t
 import torch
 import random
 import os
@@ -17,113 +20,6 @@ import argparse
 
 
 class shurikode_dataset_generator(Dataset):
-    def __init__(self, variety: int = 100):
-        self.__variety = variety
-
-        self.__image_tensorizer = transforms.Compose(
-            [transforms.ToImage(), transforms.ToDtype(torch.float32, scale=True)]
-        )
-
-        filler_color = (
-            random.random(),
-            random.random(),
-            random.random(),
-        )
-
-        # The code it's clear, there are little perspective changes, rotation and 2 random erasing (40% -> 25%)
-        self.__clear_complete_augs = transforms.Compose(
-            [
-                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2, 400),
-                transforms.RandomErasing(0.3, (0.1, 0.4)),
-                transforms.RandomErasing(0.3, (0.1, 0.4)),
-                transforms.GaussianBlur(7, (1.5, 2.5)),
-            ]
-        )
-
-        # The code it's blurred, there are little perspective changes, rotation, gaussian noise, and 1 random erasing (20% -> 25%)
-        self.__distorted_complete_augs = transforms.Compose(
-            [
-                RandomRotationPerspectiveWithColor([-90, 90], 1, 0.2, 400),
-                transforms.RandomErasing(0.3, (0.1, 0.4)),
-                transforms.GaussianBlur(25, 10),
-                transforms.GaussianNoise(sigma=0.1),
-            ]
-        )
-
-        # Only a portion of the code is visible, but it's clear, there are little perspective changes (20% -> 25%)
-        self.__clear_piece_augs = transforms.Compose(
-            [
-                RandomPerspectivePieceCutter(1, 0.3, 400),
-                transforms.GaussianBlur(7, (1.5, 2.5)),
-            ]
-        )
-
-        # Only a portion of the code is visible, but it's blurred, there are little perspective changes, gaussian noise (20% -> 25%)
-        self.__distorted_piece_augs = transforms.Compose(
-            [
-                RandomPerspectivePieceCutter(1, 0.3, 400),
-                transforms.GaussianBlur(25, 10),
-                transforms.GaussianNoise(sigma=0.1),
-            ]
-        )
-
-        self.__shurikode_encoder = shurikode_encoder(10)
-
-    def __len__(self):
-
-        return 256 * self.__variety
-
-    def __getitem__(self, i: int) -> Tuple[Tensor, int]:
-        value = i % 256
-
-        code_tensor: Tensor = self.__image_tensorizer(
-            self.__shurikode_encoder.encode(value).get_PIL_image()
-        ).unsqueeze(0)
-
-        code_tensor = torch.nn.functional.interpolate(
-            code_tensor, (400, 400), mode="bilinear"
-        )
-
-        aug_choice = random.random()
-        if aug_choice < 0.2375:
-            code_tensor: Tensor = self.__clear_complete_augs(code_tensor)
-        elif aug_choice < 0.475:
-            code_tensor: Tensor = self.__distorted_complete_augs(code_tensor)
-        elif aug_choice < 0.7125:
-            code_tensor: Tensor = self.__clear_piece_augs(code_tensor)
-        elif aug_choice < 0.95:
-            code_tensor: Tensor = self.__distorted_piece_augs(code_tensor)
-
-        return code_tensor.squeeze(0), value
-
-    def make_dataloader(
-        self,
-        batch_size: int = 8,
-        shuffle_batch: bool = True,
-        num_workers: int = 4,
-        pin_memory: bool = True,
-    ) -> DataLoader:
-        """
-            It creates a dataloader from the dataset.
-            - `batch_size`: the number of samples inside a single batch;
-            - `shuffle_batch`: if true the batches will be different in every epoch;
-            - `num_workers`: the number of workers used to create batches;
-            - `pin_memory`: leave it to true (it's to optimize the flow of information between CPU and GPU).
-
-        Returns the configured dataloader.
-        """
-
-        dataloader = DataLoader(
-            self,
-            batch_size,
-            shuffle_batch,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
-        )
-        return dataloader
-
-
-class shurikode_dataset_generator_V3(Dataset):
     """
     - 50% clear
         - 50% random rotation, random perspective
@@ -133,81 +29,53 @@ class shurikode_dataset_generator_V3(Dataset):
         - 50% with: gaussian blur, 1 random erasing, random perspective, random rotation
     """
 
-    def __init__(self, variety: int = 100):
+    def __init__(self, variety: int = 100, diagonal: int = 400):
         self.__variety = variety
+        self.__diagonal = diagonal
 
-        self.__image_tensorizer = transforms.Compose(
-            [transforms.ToImage(), transforms.ToDtype(torch.float32, scale=True)]
+        self.__image_tensorizer = t.Compose(
+            [
+                t.ToImage(),
+                t.ToDtype(torch.float32, scale=True),
+                t.Resize(self.__diagonal),
+            ]
         )
 
-        self.__clear_complete_augs = transforms.Compose(
+        self.__post_processing = t.Compose(
             [
-                RandomScaleRotationPerspectiveWithColor(
-                    0.0, 0.03, [-3, 3], 1, 0.05, 400
+                AugmentatorIf(
+                    0.5,
+                    then=RandomRotationDynamicFillerColor(1, (-90, 90)),
+                    otherwise=RandomPerspectiveDynamicFillerColor(1, 0.25),
                 ),
+                RandomScalerDynamicFillerColor(1.0, 0, 0.05),
+                RandomWaveDistortion(1, 400, 400, 0.2),
+                RandomizeAugmentator(t.GaussianBlur(9, 2.5), 0.33),  # light
+                RandomizeAugmentator(t.GaussianBlur(15, 4.75), 0.33),  # strong
+                RandomizeAugmentator(t.GaussianBlur(21, 7), 0.33),  # strong
             ]
         )
 
-        self.__semidistorted_complete_augs = transforms.Compose(
-            [
-                RandomScaleRotationPerspectiveWithColor(
-                    0.0, 0.03, [-3, 3], 1, 0.05, 400
-                ),
-                transforms.GaussianBlur(25, 10),
-            ]
-        )
-
-        self.__clear_piece_augs = transforms.Compose(
-            [
-                RandomPerspectivePieceCutter(1, 0.05, 400),
-                transforms.GaussianBlur(7, (1.5, 2.5)),
-            ]
-        )
-
-        self.__distorted_complete_augs = transforms.Compose(
-            [
-                RandomScaleRotationPerspectiveWithColor(
-                    0.0, 0.03, [-3, 3], 1, 0.05, 400
-                ),
-                transforms.GaussianBlur(25, 10),
-                transforms.RandomErasing(1, (0.1, 0.4)),
-            ]
-        )
-
-        self.__shurikode_encoder = shurikode_encoder(10)
+        self.__encoder = shurikode_encoder(10)
 
     def __len__(self):
-
         return 256 * self.__variety
 
     def __getitem__(self, i: int) -> Tuple[Tensor, int]:
         value = i % 256
 
-        code_tensor: Tensor = self.__image_tensorizer(
-            self.__shurikode_encoder.encode(value).get_PIL_image()
-        ).unsqueeze(0)
+        code_image = self.__encoder.encode(value).get_PIL_image()
+        code_tensor: Tensor = self.__image_tensorizer(code_image)
 
-        code_tensor = torch.nn.functional.interpolate(
-            code_tensor, (400, 400), mode="bilinear"
-        ).squeeze(0)
+        code_tensor = self.__post_processing(code_tensor)
 
-        aug_choice = random.random()
-        if aug_choice < 0.4:
-            code_tensor: Tensor = self.__clear_complete_augs(code_tensor)
-        elif aug_choice < 0.60:
-            code_tensor: Tensor = self.__semidistorted_complete_augs(code_tensor)
-        elif aug_choice < 0.80:
-            code_tensor: Tensor = self.__clear_piece_augs(code_tensor)
-        else:
-            code_tensor: Tensor = self.__distorted_complete_augs(code_tensor)
-
-        return code_tensor.squeeze(0), value
+        return code_tensor, value
 
     def make_dataloader(
         self,
-        batch_size: int = 8,
-        shuffle_batch: bool = True,
-        num_workers: int = 4,
+        batch_size: int = 1,
+        shuffle_batch: bool = False,
+        num_workers: int = 1,
         pin_memory: bool = True,
     ) -> DataLoader:
         """
@@ -258,6 +126,7 @@ if __name__ == "__main__":
         help="The variety of each class in the validation dataset.",
         default=30,
     )
+
     args = parser.parse_args()
     assert os.path.exists(
         args.train_dir
@@ -265,19 +134,22 @@ if __name__ == "__main__":
     assert os.path.exists(
         args.val_dir
     ), f"The val_dir directory ({args.val_dir}) doesn't exist."
-    to_pil_image = transforms.ToPILImage()
-    dataloader = shurikode_dataset_generator_V3(
+
+    to_pil_image = t.ToPILImage()
+
+    dataloader = shurikode_dataset_generator(
         args.train_variety,
-    ).make_dataloader(1, False)
+    ).make_dataloader()
     for idx, (img, value) in enumerate(dataloader):
         pil_image: Image.Image = to_pil_image(torch.clamp(img[0], 0, 255))
         series = int(idx / 256)
         pil_image.save(
             os.path.join(args.train_dir, f"{series:03}-{value.item():03}.png")
         )
-    dataloader = shurikode_dataset_generator_V3(
+
+    dataloader = shurikode_dataset_generator(
         args.val_variety,
-    ).make_dataloader(1, False)
+    ).make_dataloader()
     for idx, (img, value) in enumerate(dataloader):
         pil_image: Image.Image = to_pil_image(torch.clamp(img[0], 0, 255))
         series = int(idx / 256)

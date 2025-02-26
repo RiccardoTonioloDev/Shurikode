@@ -1,144 +1,293 @@
+from abc import ABC, abstractmethod
 from torchvision.transforms.v2 import functional as F, InterpolationMode
 import torchvision.transforms.v2 as transforms
-from typing import List, Tuple
+from typing import Any, Callable, List, Sequence, Tuple
+from random import random
+from torch import Tensor
 
 import torch
 import random
 
 
-class RandomRotationWithColor:
-    def __init__(self, degrees, expand=True):
+class ColorGenerator:
+    def __init__(self) -> None:
+        self.__n_subscribers = 0
+        self.__i = 0
+        self.__fill = (random.random(), random.random(), random.random())
+        self.__finished_subscribing = False
+
+    def subscribe(self) -> None:
+        assert (
+            not self.__finished_subscribing
+        ), "After you called get_color for the first time, you can no longer \
+            subscribe with other augmentators."
+        self.__n_subscribers += 1
+
+    def get_color(self) -> Tuple[float, float, float]:
+        self.__finished_subscribing = True
+        print(self.__i)
+        if self.__i < self.__n_subscribers:
+            self.__i += 1
+        else:
+            self.__i %= self.__n_subscribers
+            self.__i += 1
+            self.__fill = (random.random(), random.random(), random.random())
+        print(self.__fill)
+        return self.__fill
+
+
+ColorType = Tuple[float, float, float]
+
+
+class DynamicColorAugmentators(ABC):
+    _color_gen = ColorGenerator()
+
+    def __init__(self) -> None:
+        self._color_gen.subscribe()
+
+    def __call__(self, img: Tensor) -> Tensor:
+        fill = self._color_gen.get_color()
+        return self._augment(img, fill)
+
+    @abstractmethod
+    def _augment(self, img: Tensor, fill: ColorType) -> Tensor:
+        pass
+
+
+class RandomRotationDynamicFillerColor(DynamicColorAugmentators):
+    def __init__(self, p: float, degrees: Tuple[int, int], expand=True):
+        super().__init__()
         self.degrees = degrees
         self.expand = expand
+        self.p = p
 
-    def __call__(self, img: torch.Tensor, filler_color: List[float]):
-        assert len(filler_color) == 3, "filler_color must be of length 3."
-        # Genera colore casuale
+    def _augment(self, img: Tensor, fill: ColorType) -> Tensor:
+        if random.random() > self.p:
+            return img
+        assert len(fill) == 3, "filler_color must be of length 3."
+        assert len(img.shape) == 3, "The provided image must only have 3 dimensions."
+        angle = random.uniform(*self.degrees)
         return F.rotate(
             img,
-            angle=random.uniform(*self.degrees),
+            angle=angle,
             expand=self.expand,
-            fill=filler_color,
+            fill=[fill[0], fill[1], fill[2]],
             interpolation=InterpolationMode.NEAREST,
         )
 
 
-class RandomPerspectiveWithColor:
+class RandomPerspectiveDynamicFillerColor(DynamicColorAugmentators):
     def __init__(
-        self, distortion_scale=0.5, p=0.5, interpolation=F.InterpolationMode.NEAREST
+        self, p=0.5, distortion_scale=0.5, interpolation=F.InterpolationMode.NEAREST
     ):
+        super().__init__()
         self.__distortion_scale = distortion_scale
         self.__p = p
         self.__interpolation = interpolation
 
-    def __call__(self, img: torch.Tensor, filler_color: List[float]):
-        return transforms.RandomPerspective(
-            p=self.__p,
-            distortion_scale=self.__distortion_scale,
+    def _augment(self, img: Tensor, fill: ColorType) -> torch.Tensor:
+        if random.random() > self.__p:
+            return img
+        startpoints, endpoints = self.__compute_start_end_points(
+            img.shape[-2], img.shape[-1]
+        )
+        return F.perspective(
+            img,
             interpolation=self.__interpolation,
-            fill=filler_color,
-        )(img)
-
-
-class RandomRotationPerspectiveWithColor:
-    def __init__(
-        self,
-        degrees_rotation=[-90, 90],
-        p_perspective=0.5,
-        distortion_scale=0.5,
-        diagonal=400,
-    ):
-        self.__rotation = RandomRotationWithColor(degrees_rotation, True)
-        self.__perspective = RandomPerspectiveWithColor(distortion_scale, p_perspective)
-        self.__diagonal = diagonal
-
-    def __call__(self, img: torch.Tensor):
-        filler_color = [random.random(), random.random(), random.random()]
-        # ----------- THE PROBLEM IS NOT HERE
-        img = self.__rotation(img, filler_color)
-        img = self.__perspective(img, filler_color)
-        img = img.unsqueeze(0)
-        return torch.nn.functional.interpolate(
-            img, (self.__diagonal, self.__diagonal), mode="bilinear"
+            fill=[fill[0], fill[1], fill[2]],
+            startpoints=startpoints,
+            endpoints=endpoints,
         )
 
+    def __compute_start_end_points(self, height: int, width: int):
+        height, width = height, width
 
-class PieceCutter:
-    def __init__(self, diagonal=400):
+        distortion_scale = self.__distortion_scale
+
+        half_height = height // 2
+        half_width = width // 2
+        bound_height = int(distortion_scale * half_height) + 1
+        bound_width = int(distortion_scale * half_width) + 1
+        topleft = [
+            int(torch.randint(0, bound_width, size=(1,))),
+            int(torch.randint(0, bound_height, size=(1,))),
+        ]
+        topright = [
+            int(torch.randint(width - bound_width, width, size=(1,))),
+            int(torch.randint(0, bound_height, size=(1,))),
+        ]
+        botright = [
+            int(torch.randint(width - bound_width, width, size=(1,))),
+            int(torch.randint(height - bound_height, height, size=(1,))),
+        ]
+        botleft = [
+            int(torch.randint(0, bound_width, size=(1,))),
+            int(torch.randint(height - bound_height, height, size=(1,))),
+        ]
+        startpoints = [[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]]
+
+        endpoints = [topleft, topright, botright, botleft]
+        return startpoints, endpoints
+
+
+class RandomPieceCutterDynamicFillerColor(DynamicColorAugmentators):
+    def __init__(
+        self,
+        p: float,
+        diagonal=400,
+        portion_interval: Tuple[float, float] = (0.5, 1.0),
+    ):
+        super().__init__()
         self.__diagonal = diagonal
+        self.__p = p
+        self.__portion_interval = portion_interval
         pass
 
-    def __call__(self, img: torch.Tensor, filler_color: List[float]):
-        portion_size_percentage = 0.4 + 0.2 * random.random()
+    def _augment(self, img: Tensor, fill: ColorType) -> Tensor:
+        if random.random() > self.__p:
+            return img
+        portion_size_percentage = (
+            self.__portion_interval[0]
+            + (self.__portion_interval[1] - self.__portion_interval[0])
+            * random.random()
+        )
         portion_size = int(img.shape[-1] * portion_size_percentage)
         is_side = random.random() > 0.5
         if not is_side:
             r = random.uniform(-90, 90)
-            img = F.rotate(img, r, expand=True, fill=filler_color)
+            img = F.rotate(img, r, expand=True, fill=[fill[0], fill[1], fill[2]])
         which_side = random.random()
         if which_side < 0.25:  # TOP
-            img = img[:, :, :portion_size, :]
+            img = img[..., :portion_size, :]
         elif which_side < 0.50:  # BOTTOM
-            img = img[:, :, img.shape[-1] - portion_size :, :]
+            img = img[..., img.shape[-1] - portion_size :, :]
         elif which_side < 0.75:  # LEFT
-            img = img[:, :, :, :portion_size]
+            img = img[..., :, :portion_size]
         else:  # RIGHT
-            img = img[:, :, :, img.shape[-1] - portion_size :]
+            img = img[..., :, img.shape[-1] - portion_size :]
         return torch.nn.functional.interpolate(
-            img, (self.__diagonal, self.__diagonal), mode="bilinear"
-        )
+            img.unsqueeze(0), (self.__diagonal, self.__diagonal), mode="bilinear"
+        ).squeeze(0)
 
 
-class RandomPerspectivePieceCutter:
-    def __init__(self, p_perspective=0.5, distortion_scale=0.5, diagonal=400):
-        self.__piece = PieceCutter(diagonal)
-        self.__perspective = RandomPerspectiveWithColor(distortion_scale, p_perspective)
-
-    def __call__(self, img: torch.Tensor):
-        filler_color = [random.random(), random.random(), random.random()]
-        assert (
-            len(img.shape) == 3
-        ), "The shape of the input tensor for this module must be 3D."
-        img = img.unsqueeze(0)
-        img = self.__piece(img, filler_color)
-        return self.__perspective(img, filler_color)
-
-
-class RandomScaler:
-    def __init__(self, min_pad=0.0, max_pad=0.3, diagonal=400):
+class RandomScalerDynamicFillerColor(DynamicColorAugmentators):
+    def __init__(self, p: float, min_pad=0.0, max_pad=0.3, diagonal=400):
+        super().__init__()
         self.__min_pad = min_pad * diagonal
         self.__max_pad = max_pad * diagonal
         self.__diagonal = diagonal
+        self.__p = p
 
-    def __call__(self, img: torch.Tensor, color: List[float]):
+    def _augment(self, img: Tensor, fill: ColorType):
+        if random.random() > self.__p:
+            return img
         r = random.random()
         pad = int((self.__max_pad - self.__min_pad) * r + self.__min_pad)
-        padder = transforms.Pad(padding=pad, fill=color, padding_mode="constant")
+        padder = transforms.Pad(padding=pad, fill=fill, padding_mode="constant")
         img = padder(img)
-        return img
-
-
-class RandomScaleRotationPerspectiveWithColor:
-    def __init__(
-        self,
-        min_pad=0.0,
-        max_pad=0.3,
-        degrees_rotation=[-90, 90],
-        p_perspective=0.5,
-        distortion_scale=0.5,
-        diagonal=400,
-    ):
-        self.__scaler = RandomScaler(min_pad, max_pad, diagonal)
-        self.__rotation = RandomRotationWithColor(degrees_rotation, True)
-        self.__perspective = RandomPerspectiveWithColor(distortion_scale, p_perspective)
-        self.__diagonal = diagonal
-
-    def __call__(self, img: torch.Tensor):
-        filler_color = [random.random(), random.random(), random.random()]
-        img = self.__scaler(img, filler_color)
-        img = self.__rotation(img, filler_color)
-        img = self.__perspective(img, filler_color)
-        img = img.unsqueeze(0)
         return torch.nn.functional.interpolate(
-            img, (self.__diagonal, self.__diagonal), mode="bilinear"
-        )
+            img.unsqueeze(0), (self.__diagonal, self.__diagonal), mode="bilinear"
+        ).squeeze(0)
+
+
+class RandomFishEye:
+    def __init__(self, p: float, height: int, width: int, magnitude: float = 0.25):
+        self.__h = height
+        self.__w = width
+        self.__magnitude = magnitude
+        self.__p = p
+
+    def __call__(self, img: Tensor) -> Tensor:
+        if random.random() > self.__p:
+            return img
+        choosen_center = torch.tensor(self.__compute_center())
+        xx, yy = torch.linspace(-1, 1, self.__w), torch.linspace(-1, 1, self.__h)
+        gridy, gridx = torch.meshgrid(yy, xx)  # create identity grid
+        grid = torch.stack([gridx, gridy], dim=-1)
+        d = choosen_center - grid  # calculate the distance(cx - x, cy - y)
+        d_sum = torch.sqrt((d**2).sum(dim=-1))  # sqrt((cx-x)^2+(cy-y)^2)
+        grid += d * d_sum.unsqueeze(-1) * self.__magnitude
+        return torch.nn.functional.grid_sample(
+            img.unsqueeze(0), grid.unsqueeze(0), align_corners=False
+        ).squeeze(0)
+
+    def __compute_center(self) -> Tuple[float, float]:
+        computed_rand_center_x = random.random() * 0.2 - 0.1
+        computed_rand_center_y = random.random() * 0.2 - 0.1
+        return computed_rand_center_x, computed_rand_center_y
+
+
+class RandomizeAugmentator:
+    def __init__(self, augmentator: Callable, p: float) -> None:
+        self.__aug = augmentator
+        self.__p = p
+
+    def __call__(self, img: Tensor) -> Tensor:
+        return img if self.__p < random.random() else self.__aug(img)
+
+
+class AugmentatorIf:
+    def __init__(self, p: float, then: Callable, otherwise: Callable) -> None:
+        self.__then = then
+        self.__otherwise = otherwise
+        self.__p = p
+
+    def __call__(self, img: Tensor) -> Tensor:
+        return self.__then(img) if random.random() > self.__p else self.__otherwise(img)
+
+
+class RandomWaveDistortion:
+
+    def __init__(self, p: float, height: int, width: int, curvature: float = 0.2):
+        """
+        Apply a single large bending curve effect, as if the image were attached to a large pipe.
+
+        Args:
+            p (float): Probability of applying the transformation.
+            height (int): Image height.
+            width (int): Image width.
+            curvature (float): Controls the intensity of the bending effect.
+        """
+        self.__h = height
+        self.__w = width
+        self.__curvature = curvature  # Strength of the bend
+        self.__p = p
+
+    def __call__(self, img: Tensor) -> Tensor:
+        """
+        Apply the pipe bending effect to the image with probability `p`.
+
+        Args:
+            img (Tensor): Image tensor of shape [C, H, W].
+
+        Returns:
+            Tensor: Distorted image tensor.
+        """
+        if random.random() > self.__p:
+            return img
+
+        # Create a normalized coordinate grid [-1, 1]
+        yy, xx = torch.linspace(-1, 1, self.__h), torch.linspace(-1, 1, self.__w)
+        grid_y, grid_x = torch.meshgrid(yy, xx, indexing="ij")
+        grid = torch.stack([grid_x, grid_y], dim=-1)  # Shape: [H, W, 2]
+
+        # Apply a uniform pipe bending effect (constant displacement across the entire height)
+        fun_to_apply = torch.cos
+        value_to_add = torch.pi / 5
+        devisor = 1.75
+        if random.random() < 0.5:
+            fun_to_apply = torch.sin
+            value_to_add = torch.pi / 4
+            devisor = 2
+        grid[..., 0] += self.__curvature * fun_to_apply(
+            torch.pi * grid[..., 1] / devisor + value_to_add
+        )  # Sinusoidal displacement
+
+        # Apply grid_sample to warp the image
+        return torch.nn.functional.grid_sample(
+            img.unsqueeze(0),
+            grid.unsqueeze(0),
+            mode="bilinear",
+            padding_mode="border",
+            align_corners=True,
+        ).squeeze(0)
