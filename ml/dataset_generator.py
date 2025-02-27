@@ -1,8 +1,6 @@
 from PIL.Image import Image
 from shurikode.shurikode_encoder import shurikode_encoder
 from typing import Tuple
-from torch.utils.data import Dataset, DataLoader
-from torch import Tensor
 from augmentators import (
     AugmentatorIf,
     RandomRotationDynamicFillerColor,
@@ -20,12 +18,8 @@ import os
 import argparse
 
 
-class shurikode_dataset_generator(Dataset):
-    def __init__(
-        self,
-        transforms: Transform,
-        variety: int = 100,
-    ):
+class shurikode_dataset_generator:
+    def __init__(self, transforms: Transform, variety: int = 100, num_classes=256):
         """
         :param transforms: The basic PIL Image to tensor transformations plus optional augmentations.
         :param variety: The number of different representations for the same 2D encoded code.
@@ -33,42 +27,16 @@ class shurikode_dataset_generator(Dataset):
         self.__variety = variety
         self.__post_processing = transforms
         self.__encoder = shurikode_encoder(10)
+        self.__num_classes = num_classes
 
     def __len__(self):
-        return 256 * self.__variety
+        return self.__num_classes * self.__variety
 
     def __getitem__(self, i: int) -> Tuple[Image, int]:
-        value = i % 256
+        value = i % self.__num_classes
         image = self.__encoder.encode(value).get_PIL_image()
         image = self.__post_processing(image)
         return image, value
-
-    def make_dataloader(
-        self,
-        batch_size: int = 1,
-        shuffle_batch: bool = False,
-        num_workers: int = 1,
-        pin_memory: bool = True,
-    ) -> DataLoader:
-        """
-        It creates a dataloader from the dataset.
-
-        :param batch_size: The number of samples inside a single batch.
-        :param shuffle_batch: If true the batches will be different in every epoch.
-        :param num_workers: The number of workers used to create batches.
-        :param pin_memory: Leave it to true (it's to optimize the flow of information between CPU and GPU).
-
-        :return: The configured dataloader.
-        """
-
-        dataloader = DataLoader(
-            self,
-            batch_size,
-            shuffle_batch,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
-        )
-        return dataloader
 
 
 if __name__ == "__main__":
@@ -145,30 +113,30 @@ if __name__ == "__main__":
         ]
     )
 
-    dataloader = shurikode_dataset_generator(
-        post_processing_w_augmentations,
-        args.train_variety,
-    ).make_dataloader()
-    for idx, (pil_image, value) in enumerate(dataloader):
-        series = int(idx / 256)
-        pil_image.save(
-            os.path.join(args.train_dir, f"{series:03}-{value.item():03}.png")
-        )
+    NUM_CLASSES = 256
 
-    dataloader = shurikode_dataset_generator(
-        post_processing_w_augmentations,
-        args.val_variety,
-    ).make_dataloader()
-    for idx, (pil_image, value) in enumerate(dataloader):
-        series = int(idx / 256)
-        pil_image.save(os.path.join(args.val_dir, f"{series:03}-{value.item():03}.png"))
+    dataset = shurikode_dataset_generator(
+        post_processing_w_augmentations, args.train_variety, NUM_CLASSES
+    )
+    for i in range(NUM_CLASSES * args.train_variety):
+        series = int(i / 256)
+        pil_image, value = dataset[i]
+        pil_image.save(os.path.join(args.train_dir, f"{series:03}-{value:03}.png"))
 
-    dataloader = shurikode_dataset_generator(
-        post_processing_wo_augmentations,
-        1,
-    ).make_dataloader()
-    for idx, (pil_image, value) in enumerate(dataloader):
-        series = int(idx / 256)
+    dataset = shurikode_dataset_generator(
+        post_processing_w_augmentations, args.val_variety, NUM_CLASSES
+    )
+    for i in range(NUM_CLASSES * args.val_variety):
+        series = int(i / 256)
+        pil_image, value = dataset[i]
+        pil_image.save(os.path.join(args.val_dir, f"{series:03}-{value:03}.png"))
+
+    dataset = shurikode_dataset_generator(
+        post_processing_wo_augmentations, 1, NUM_CLASSES
+    )
+    for i in range(NUM_CLASSES * args.val_variety):
+        series = int(i / 256)
+        pil_image, value = dataset[i]
         pil_image.save(
-            os.path.join(args.clean_examples_dir, f"{series:03}-{value.item():03}.png")
+            os.path.join(args.clean_examples_dir, f"{series:03}-{value:03}.png")
         )
