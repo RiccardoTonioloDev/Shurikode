@@ -1,6 +1,8 @@
-from typing import Dict, Any, Literal, List, Tuple
+import time
+from typing import Dict, Any, Iterator, Literal, List, Tuple
+from torch.utils.data import DataLoader
+from torch import Tensor
 
-import torchvision.transforms.v2 as T
 import torch
 import os
 
@@ -15,8 +17,8 @@ def save_model(
 
 def number_of_correct_predictions(
     device: Literal["cpu", "mps", "cuda"],
-    pred: torch.Tensor,
-    gt: torch.Tensor,
+    pred: Tensor,
+    gt: Tensor,
     threshold=0.5,
 ) -> int:
     binary_pred = (pred > threshold) * torch.ones(pred.shape).to(
@@ -42,8 +44,8 @@ def number_of_correct_predictions(
 
 def avg_errors_in_wrong_predictions(
     device: Literal["cpu", "mps", "cuda"],
-    pred: torch.Tensor,
-    gt: torch.Tensor,
+    pred: Tensor,
+    gt: Tensor,
     threshold=0.5,
 ) -> float:
     binary_pred = (pred > threshold) * torch.ones(pred.shape).to(
@@ -137,7 +139,7 @@ def detect_and_correct(hamming: List[int]) -> Tuple[List[int], int]:
 
 
 def acc_for_prob_vec(
-    device: Literal["cpu", "mps", "cuda"], pred: torch.Tensor, gt: torch.Tensor
+    device: Literal["cpu", "mps", "cuda"], pred: Tensor, gt: Tensor
 ) -> float:
     gt_tensor = torch.zeros_like(pred)
     for idx, t in enumerate(gt):
@@ -149,22 +151,3 @@ def acc_for_prob_vec(
     batch_size = wrongs.shape[0]
     corrects = batch_size - wrongs.sum().item().__int__()
     return corrects / batch_size
-
-
-if __name__ == "__main__":
-    hamming = generate_hamming([0, 1, 0, 1, 1, 0, 1, 0])
-    print(hamming)
-    data, err = detect_and_correct(hamming)
-    print(data, err)
-    hamming[4] = 1 if hamming[4] == 0 else 0
-    data, err = detect_and_correct(hamming)
-    print(data, err)
-    hamming[7] = 1 if hamming[7] == 0 else 0
-    data, err = detect_and_correct(hamming)
-    print(data, err)
-    hamming[1] = 1 if hamming[1] == 0 else 0
-    data, err = detect_and_correct(hamming)
-    print(data, err)
-    hamming[0] = 1 if hamming[0] == 0 else 0
-    data, err = detect_and_correct(hamming)
-    print(data, err)

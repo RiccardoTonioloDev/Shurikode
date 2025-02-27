@@ -11,42 +11,43 @@ import random
 
 class ColorGenerator:
     def __init__(self) -> None:
-        self.__n_subscribers = 0
         self.__i = 0
         self.__fill = (random.random(), random.random(), random.random())
         self.__finished_subscribing = False
+        self.__subscribers: List[object] = []
 
-    def subscribe(self) -> None:
+    def subscribe(self, subscriber: object) -> None:
         assert (
             not self.__finished_subscribing
         ), "After you called get_color for the first time, you can no longer \
             subscribe with other augmentators."
-        self.__n_subscribers += 1
+        self.__subscribers.append(subscriber)
 
-    def get_color(self) -> Tuple[float, float, float]:
+    def get_color(self, subscriber: object) -> Tuple[float, float, float]:
         self.__finished_subscribing = True
-        print(self.__i)
-        if self.__i < self.__n_subscribers:
-            self.__i += 1
-        else:
-            self.__i %= self.__n_subscribers
-            self.__i += 1
+        sub_idx = self.__subscribers.index(subscriber)
+        if self.__i < sub_idx:
+            self.__i = sub_idx
+        elif self.__i > sub_idx:
             self.__fill = (random.random(), random.random(), random.random())
-        print(self.__fill)
+            self.__i = sub_idx
+        self.__i += 1
         return self.__fill
 
 
 ColorType = Tuple[float, float, float]
 
+color_gen = ColorGenerator()
+
 
 class DynamicColorAugmentators(ABC):
-    _color_gen = ColorGenerator()
 
     def __init__(self) -> None:
-        self._color_gen.subscribe()
+        self.__color_gen = color_gen
+        self.__color_gen.subscribe(self)
 
     def __call__(self, img: Tensor) -> Tensor:
-        fill = self._color_gen.get_color()
+        fill = self.__color_gen.get_color(self)
         return self._augment(img, fill)
 
     @abstractmethod
@@ -55,30 +56,41 @@ class DynamicColorAugmentators(ABC):
 
 
 class RandomRotationDynamicFillerColor(DynamicColorAugmentators):
-    def __init__(self, p: float, degrees: Tuple[int, int], expand=True):
+    def __init__(
+        self, degrees: Tuple[int, int], diagonal: int = 400, expand=True, p: float = 0.5
+    ):
         super().__init__()
-        self.degrees = degrees
-        self.expand = expand
-        self.p = p
+        self.__degrees = degrees
+        self.__expand = expand
+        self.__p = p
+        self.__diagonal = diagonal
 
     def _augment(self, img: Tensor, fill: ColorType) -> Tensor:
-        if random.random() > self.p:
+        if random.random() > self.__p:
             return img
         assert len(fill) == 3, "filler_color must be of length 3."
         assert len(img.shape) == 3, "The provided image must only have 3 dimensions."
-        angle = random.uniform(*self.degrees)
-        return F.rotate(
+        angle = random.uniform(*self.__degrees)
+        rotated_img = F.rotate(
             img,
             angle=angle,
-            expand=self.expand,
+            expand=self.__expand,
             fill=[fill[0], fill[1], fill[2]],
             interpolation=InterpolationMode.NEAREST,
         )
+        return torch.nn.functional.interpolate(
+            rotated_img.unsqueeze(0),
+            (self.__diagonal, self.__diagonal),
+            mode="bilinear",
+        ).squeeze(0)
 
 
 class RandomPerspectiveDynamicFillerColor(DynamicColorAugmentators):
     def __init__(
-        self, p=0.5, distortion_scale=0.5, interpolation=F.InterpolationMode.NEAREST
+        self,
+        distortion_scale=0.5,
+        interpolation=F.InterpolationMode.NEAREST,
+        p: float = 0.5,
     ):
         super().__init__()
         self.__distortion_scale = distortion_scale
@@ -133,9 +145,9 @@ class RandomPerspectiveDynamicFillerColor(DynamicColorAugmentators):
 class RandomPieceCutterDynamicFillerColor(DynamicColorAugmentators):
     def __init__(
         self,
-        p: float,
         diagonal=400,
         portion_interval: Tuple[float, float] = (0.5, 1.0),
+        p: float = 0.5,
     ):
         super().__init__()
         self.__diagonal = diagonal
@@ -171,7 +183,7 @@ class RandomPieceCutterDynamicFillerColor(DynamicColorAugmentators):
 
 
 class RandomScalerDynamicFillerColor(DynamicColorAugmentators):
-    def __init__(self, p: float, min_pad=0.0, max_pad=0.3, diagonal=400):
+    def __init__(self, min_pad=0.0, max_pad=0.3, diagonal=400, p: float = 0.5):
         super().__init__()
         self.__min_pad = min_pad * diagonal
         self.__max_pad = max_pad * diagonal
@@ -238,7 +250,7 @@ class AugmentatorIf:
 
 class RandomWaveDistortion:
 
-    def __init__(self, p: float, height: int, width: int, curvature: float = 0.2):
+    def __init__(self, height: int, width: int, curvature: float = 0.2, p=0.5):
         """
         Apply a single large bending curve effect, as if the image were attached to a large pipe.
 
@@ -273,14 +285,11 @@ class RandomWaveDistortion:
 
         # Apply a uniform pipe bending effect (constant displacement across the entire height)
         fun_to_apply = torch.cos
-        value_to_add = torch.pi / 5
-        devisor = 1.75
+        value_to_add = torch.pi / random.random()
         if random.random() < 0.5:
             fun_to_apply = torch.sin
-            value_to_add = torch.pi / 4
-            devisor = 2
         grid[..., 0] += self.__curvature * fun_to_apply(
-            torch.pi * grid[..., 1] / devisor + value_to_add
+            torch.pi * grid[..., 1] / 2 + value_to_add
         )  # Sinusoidal displacement
 
         # Apply grid_sample to warp the image

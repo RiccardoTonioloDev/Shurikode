@@ -1,4 +1,4 @@
-from model import Create_ResNet34_prob_vec
+from model import Create_ResNet
 from dataset import shurikode_dataset_vector
 from torch.optim import Adam
 from tqdm import tqdm
@@ -35,7 +35,7 @@ elif torch.mps.is_available():
     print("TRAINING ON MPS")
 
 
-m = Create_ResNet34_prob_vec().to(device)
+m = Create_ResNet("34").to(device)
 
 epochs_n = 90
 lr = 1e-4
