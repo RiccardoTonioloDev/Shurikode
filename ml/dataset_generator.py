@@ -134,7 +134,7 @@ if __name__ == "__main__":
     dataset = shurikode_dataset_generator(
         post_processing_wo_augmentations, 1, NUM_CLASSES
     )
-    for i in range(NUM_CLASSES * args.val_variety):
+    for i in range(NUM_CLASSES):
         series = int(i / 256)
         pil_image, value = dataset[i]
         pil_image.save(
