@@ -1,10 +1,23 @@
-import time
-from typing import Dict, Any, Iterator, Literal, List, Tuple
-from torch.utils.data import DataLoader
+from typing import Dict, Any, Literal, List
+from abc import ABC, abstractmethod
 from torch import Tensor
 
+import torch.nn as nn
 import torch
 import os
+
+from custom_types import EvaluationType
+
+
+def find_device():
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+        print("TRAINING ON CUDA")
+    elif torch.mps.is_available():
+        device = "mps"
+        print("TRAINING ON MPS")
+    return device
 
 
 def save_model(
@@ -15,139 +28,121 @@ def save_model(
     return checkpoint_filename
 
 
-def number_of_correct_predictions(
-    device: Literal["cpu", "mps", "cuda"],
-    pred: Tensor,
-    gt: Tensor,
-    threshold=0.5,
-) -> int:
-    binary_pred = (pred > threshold) * torch.ones(pred.shape).to(
-        device
-    )  # 1 where there is a difference
-    tensor_of_differences = torch.sum(
-        torch.abs(binary_pred - gt), dim=1
-    )  # computing the number of differences per image
-    tensor_of_correctness = (
-        tensor_of_differences > 0
-    ) * torch.ones(  # 1 where the image was mislabeled
-        tensor_of_differences.shape
-    ).to(
-        device
-    )
-    number_of_wrong = torch.sum(
-        tensor_of_correctness
-    )  # computing how many images where mislabeled
-    return (
-        (len(tensor_of_correctness) - number_of_wrong).item().__int__()
-    )  # computing how many images where right
+class Metric:
+    def __init__(self, name: str, val: float) -> None:
+        self.__name = name
+        self.__val = val
+
+    def get_name(self):
+        return self.__name
+
+    def get_value(self):
+        return self.__val
 
 
-def avg_errors_in_wrong_predictions(
-    device: Literal["cpu", "mps", "cuda"],
-    pred: Tensor,
-    gt: Tensor,
-    threshold=0.5,
-) -> float:
-    binary_pred = (pred > threshold) * torch.ones(pred.shape).to(
-        device
-    )  # 1 where there is a difference
-    tensor_of_differences = torch.sum(
-        torch.abs(binary_pred - gt), dim=1
-    )  # computing the number of differences per image
+class ModelEvaluationFunction(ABC):
+    def __init__(self, name: EvaluationType) -> None:
+        super().__init__()
+        self.__name = name
 
-    tensor_of_correctness = (
-        tensor_of_differences > 0
-    ) * torch.ones(  # 1 where the image was mislabeled
-        tensor_of_differences.shape
-    ).to(
-        device
-    )
+    def get_name(self):
+        return self.__name
 
-    number_of_wrong = torch.sum(
-        tensor_of_correctness
-    )  # computing how many images where mislabeled
-
-    avg_errors_per_image = torch.sum(
-        tensor_of_differences
-    )  # computing how many images where mislabeled
-    return avg_errors_per_image.item().__int__() / (
-        number_of_wrong.item().__int__() if number_of_wrong.item().__int__() > 0 else 1
-    )  # computing how many images where right
+    @abstractmethod
+    def __call__(self, pred: Tensor, gt: Tensor) -> Metric:
+        pass
 
 
-def generate_hamming(bits: List[int]) -> List[int]:
-    # Calcolo il numero di bit di parità necessari
-    n = len(bits)
-    m = 0
-    while (2**m) < (n + m + 1):
-        m += 1
+class AccuracyVectorOutput(ModelEvaluationFunction):
+    def __init__(self) -> None:
+        super().__init__("Accuracy")
 
-    # Positioning parity bits in the list
-    hamming = []
-    j = 0
-    k = 0
-    for i in range(1, n + m + 1):
-        if i == 2**j:  # Positioning a parity bit
-            hamming.append(0)
-            j += 1
-        else:
-            hamming.append(bits[k])
-            k += 1
-
-    # Calculating parity bits values
-    for p in range(m):
-        parity_pos = 2**p
-        parity = 0
-        for i in range(1, len(hamming) + 1):
-            if i & parity_pos:  # Verifying if bit is part of the group
-                parity ^= hamming[i - 1]
-        hamming[parity_pos - 1] = parity
-
-    return hamming
+    def __call__(self, pred: Tensor, gt: Tensor) -> Metric:
+        batch_size = pred.shape[0]
+        pred = torch.softmax(pred, dim=1).argmax(dim=1)
+        corrects = (pred == gt).int().sum()
+        return Metric(self.get_name(), corrects.item() / batch_size)
 
 
-def detect_and_correct(hamming: List[int]) -> Tuple[List[int], int]:
-    m = 0
-    while (2**m) < len(hamming):
-        m += 1
+class ConsoleStatsLogger:
+    def __init__(self, epoch_n: int) -> None:
+        self.__epoch_n = epoch_n
 
-    # Calculating error position
-    error_pos = 0
-    for p in range(m):
-        parity_pos = 2**p
-        parity = 0
-        for i in range(1, len(hamming) + 1):
-            if i & parity_pos:
-                parity ^= hamming[i - 1]
-        if parity != 0:
-            error_pos += parity_pos
-
-    # Correcting the error if necessary
-    if error_pos > 0:
-        hamming[error_pos - 1] ^= 1
-
-    # Removing parity bits to return only the data
-    original_bits = []
-    j = 0
-    for i in range(1, len(hamming) + 1):
-        if i != 2**j:
-            original_bits.append(hamming[i - 1])
-        else:
-            j += 1
-
-    return original_bits, error_pos
+    def __call__(self, type: str, stats: List[Metric], epoch: int) -> Any:
+        str_stats = "| "
+        for stat in stats:
+            str_stats = str_stats + f"{stat.get_name()}: {stat.get_value():.4f} | "
+        print(f"({type}) Epoch {epoch}/{self.__epoch_n}: {str_stats}")
 
 
-def acc_for_prob_vec(
-    device: Literal["cpu", "mps", "cuda"], pred: Tensor, gt: Tensor
-) -> float:
-    gt_tensor = torch.zeros_like(pred)
-    for idx, t in enumerate(gt):
-        gt_tensor[idx][t] = 1
+def log_elapsed_remaining_total_time(
+    elapsed_time: float, epochs_done: int, epochs_n: int
+) -> None:
+    e_hours, remainder = divmod(elapsed_time, 3600)
+    e_minutes, e_seconds = divmod(remainder, 60)
 
-    binary_pred = (torch.softmax(pred, dim=1) > 0.5) * torch.ones(pred.shape).to(device)
-    differences_counter = torch.sum(torch.abs(binary_pred - gt_tensor), dim=1)
-    wrongs = torch.ones_like(differences_counter) * (differences_counter > 0)
-    batch_size = wrongs.shape[0]
-    corrects = batch_size - wrongs.sum().item().__int__()
-    return corrects / batch_size
+    total_time = elapsed_time / epochs_done * epochs_n
+    t_hours, remainder = divmod(total_time, 3600)
+    t_minutes, t_seconds = divmod(remainder, 60)
+
+    remaining_time = total_time - elapsed_time
+    r_hours, remainder = divmod(remaining_time, 3600)
+    r_minutes, r_seconds = divmod(remainder, 60)
+
+    print(f"ELAPSED TIME: {e_hours}h {e_minutes}m {e_seconds:.2f}s")
+    print(f"REMAINING TIME: {r_hours}h {r_minutes}m {r_seconds:.2f}s")
+    print(f"TOTAL TIME: {t_hours}h {t_minutes}m {t_seconds:.2f}s")
+
+
+class ConditionalSave:
+    def __init__(
+        self,
+        objective: Literal["minimize", "maximize"],
+        metric_name: str,
+        checkpoints_dir: str,
+        experiment_name: str,
+    ) -> None:
+        self.__checkpoint_files: List[str] = []
+        self.__best_evaluation = float("-inf")
+        if objective == "minimize":
+            self.__best_evaluation = float("inf")
+        self.__metric_name = metric_name
+        self.__objective = objective
+        self.__checkpoints_dir = checkpoints_dir
+        self.__experiment_name = experiment_name
+
+    def __call__(
+        self,
+        model: nn.Module,
+        model_stats: List[Metric],
+        epoch: int,
+    ) -> None:
+        # Finding the evaluation metric index from the various statistics retrieved
+        metric_index = [
+            i
+            for i, metric in enumerate(model_stats)
+            if metric.get_name() == self.__metric_name
+        ]
+        assert (
+            len(metric_index) != 0
+        ), f"Metric name {self.__metric_name} for conditional saving doesn't exist within defined metrics."
+        current_evaluation = model_stats[metric_index[0]].get_value()
+
+        # Guard for correct objective prediction
+        is_greater_than_best = current_evaluation > self.__best_evaluation
+        is_maximising = self.__objective == "maximize"
+        if (not (is_greater_than_best != is_maximising)) or abs(
+            self.__best_evaluation
+        ) == float("inf"):
+
+            self.__best_evaluation = current_evaluation
+            checkpoint_filename = save_model(
+                self.__checkpoints_dir,
+                f"e{epoch:03d}_{self.__experiment_name}",
+                model.state_dict(),
+            )
+            self.__checkpoint_files.append(checkpoint_filename)
+            for ckpt_file in self.__checkpoint_files[:-1]:
+                if os.path.exists(ckpt_file):
+                    os.remove(ckpt_file)
+            self.__checkpoint_files = self.__checkpoint_files[-1:]
