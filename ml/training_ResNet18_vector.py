@@ -1,4 +1,4 @@
-from ml.custom_types import EvaluationType
+from custom_types import EvaluationType
 from training import train
 from model import Create_ResNet
 from dataset import shurikode_dataset
