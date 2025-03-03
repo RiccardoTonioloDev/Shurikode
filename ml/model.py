@@ -4,7 +4,7 @@ from torch import nn
 from torchvision import models
 
 
-ResNetType = Literal["18", "34", "50"]
+ResNetType = Literal["r18", "r34", "r50"]
 
 model_selector = {
     "r18": (models.ResNet18_Weights.IMAGENET1K_V1, models.resnet18),

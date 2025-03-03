@@ -41,7 +41,7 @@ METRIC: EvaluationType = "Accuracy"
 device = find_device()
 
 # MODEL CREATION #######################################################################################################
-m = Create_ResNet("18", n_classes=N_CLASSES).to(device)
+m = Create_ResNet("r18", n_classes=N_CLASSES).to(device)
 
 
 # OPTIMIZER & SCHEDULER CREATION #######################################################################################

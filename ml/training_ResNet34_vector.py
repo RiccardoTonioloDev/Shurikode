@@ -1,4 +1,4 @@
-from ml.custom_types import EvaluationType
+from custom_types import EvaluationType
 from training import train
 from model import Create_ResNet
 from dataset import shurikode_dataset
@@ -41,7 +41,7 @@ METRIC: EvaluationType = "Accuracy"
 device = find_device()
 
 # MODEL CREATION #######################################################################################################
-m = Create_ResNet("34", n_classes=N_CLASSES).to(device)
+m = Create_ResNet("r34", n_classes=N_CLASSES).to(device)
 
 
 # OPTIMIZER & SCHEDULER CREATION #######################################################################################
