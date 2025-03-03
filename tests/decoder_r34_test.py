@@ -41,7 +41,7 @@ def decoder_r34():
 
 
 @pytest.mark.parametrize("value", indices)
-def test_decoding_r50(
+def test_decoding_r34(
     value: int,
     encoder: shurikode.shurikode_encoder.shurikode_encoder,
     decoder_r34: shurikode.shurikode_decoder.shurikode_decoder,

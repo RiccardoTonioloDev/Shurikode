@@ -82,7 +82,7 @@ class AverageAccuracyVectorOutput(ModelEvaluationFunction):
 
     def __call__(self, pred: Tensor, gt: Tensor) -> Result:
         batch_size = pred.shape[0]
-        pred = torch.softmax(pred, dim=1).argmax(dim=1)
+        pred = pred.argmax(dim=1)
         corrects = (pred == gt).int().sum()
         return Result(self.get_name(), corrects.item() / batch_size)
 

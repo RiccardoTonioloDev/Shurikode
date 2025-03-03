@@ -8,6 +8,7 @@ import random
 import shurikode.shurikode_decoder
 import shurikode.shurikode_encoder
 
+IMAGES_DIAGONAL = 400
 
 indices = list(range(256))
 
@@ -15,6 +16,7 @@ image_tensorizer = transforms.Compose(
     [
         transforms.ToImage(),
         transforms.ToDtype(torch.float32, scale=True),
+        transforms.Resize(IMAGES_DIAGONAL),
     ]
 )
 
@@ -27,7 +29,7 @@ augmentators_1 = transforms.Pad(
     ],
     padding_mode="constant",
 )
-augmentators_2 = transforms.GaussianBlur(25, 10)
+augmentators_2 = transforms.GaussianBlur(21, 7)
 
 
 @pytest.fixture(scope="module")
@@ -41,12 +43,12 @@ def decoder_r18():
 
 
 @pytest.mark.parametrize("value", indices)
-def test_decoding_r50(
+def test_decoding_r18(
     value: int,
     encoder: shurikode.shurikode_encoder.shurikode_encoder,
     decoder_r18: shurikode.shurikode_decoder.shurikode_decoder,
 ):
-    number_img = encoder.encode(value).get_PIL_image()
+    number_img = encoder.encode(value).get_PIL_image().convert("RGB")
     decoded_value_0 = decoder_r18(number_img)
     tensor_img: torch.Tensor = image_tensorizer(number_img).unsqueeze(0)
     tensor_img = torch.nn.functional.interpolate(

@@ -36,7 +36,7 @@ BATCH_SIZE = 32
 
 # Checkpoint saving parameters
 OBJECTIVE = "maximize"
-METRIC: EvaluationType = "Accuracy"
+METRIC: EvaluationType = "Loss"
 
 device = find_device()
 

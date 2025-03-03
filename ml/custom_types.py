@@ -2,4 +2,4 @@ from typing import Literal
 
 DeviceType = Literal["mps", "cuda", "cpu"]
 
-EvaluationType = Literal["Accuracy"]
+EvaluationType = Literal["Accuracy", "Loss"]

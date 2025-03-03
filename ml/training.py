@@ -133,16 +133,18 @@ def validate_model(
     avg_loss = 0
 
     with torch.no_grad():
-        for i, (img, gt) in enumerate(dataloader):
+        for batch_idx, (img, gt) in enumerate(dataloader):
             img, gt = img.to(device), gt.to(device)
 
             pred: torch.Tensor = model(img)
             loss: torch.Tensor = loss_function(pred, gt)
 
             # Calculating dynamically the average statistics
-            avg_loss = ((avg_loss * i) + loss.item()) / (i + 1)
-            for i, (eval_func) in enumerate(evaluation_functions):
-                evals[i] = ((evals[i] * i) + eval_func(pred, gt).get_value()) / (i + 1)
+            avg_loss = ((avg_loss * batch_idx) + loss.item()) / (batch_idx + 1)
+            for func_idx, (eval_func) in enumerate(evaluation_functions):
+                evals[func_idx] = (
+                    (evals[func_idx] * batch_idx) + eval_func(pred, gt).get_value()
+                ) / (batch_idx + 1)
 
     stats_w_names = [Result("Loss", avg_loss)] + [
         Result(evaluation_functions[i].get_name(), evals[i])

@@ -24,7 +24,7 @@ class shurikode_decoder:
         'r50'.
         """
         self.__device = find_device()
-        self.__m = Create_ResNet_Shurikode(m, 256, self.__device)
+        self.__m = Create_ResNet_Shurikode(m, 256, self.__device).eval()
 
     def __call__(self, img: Union[Image, Tensor]) -> int:
         """
@@ -34,10 +34,10 @@ class shurikode_decoder:
 
         :param `img`: The Pillow Image or `torch.Tensor` (as a 3D tensor or a 4D tensor of batch size 1).
         """
-        img_t = self.__img_to_expected_tensor(img, self.__device)
-        model_output_logits = self.__m(img_t)
-        model_output_probas: Tensor = torch.softmax(model_output_logits, 1).squeeze(0)
-        label = model_output_probas.argmax(-1).item().__int__()
+        with torch.no_grad():
+            img_t = self.__img_to_expected_tensor(img, self.__device)
+            model_output_logits: Tensor = self.__m(img_t).squeeze(0)
+            label = int(model_output_logits.argmax(-1).item())
         return label
 
     @staticmethod
