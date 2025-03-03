@@ -104,6 +104,9 @@ class ConsoleStatsLogger:
         :param stats: An array of results to be logged.
         :param epoch: The current epoch of training.
         """
+        print(
+            "##########################################################################################################################"
+        )
         str_stats = "| "
         for stat in stats:
             str_stats = str_stats + f"{stat.get_name()}: {stat.get_value():.4f} | "

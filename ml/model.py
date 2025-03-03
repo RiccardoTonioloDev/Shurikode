@@ -1,6 +1,7 @@
 import math
 from typing import Literal
 from torch import nn
+import torch
 from torchvision import models
 
 
@@ -19,6 +20,7 @@ def Create_ResNet(
     n_classes=256,
     binary_output=False,
     hamming_output=False,
+    group_norm=False,
 ) -> nn.Module:
     """
     Creates a ResNet model of the selected type and configuration.
@@ -46,10 +48,29 @@ def Create_ResNet(
     if not w:
         w = model_selector[resnet_type][0]
 
+    # Modifying the output linear layer
     model: nn.Module = model_selector[resnet_type][1](weights=w)
     model.fc = nn.Linear(model.fc.in_features, output_features)
+
+    # Replacing batch normalization with group normalization
+    if group_norm:
+        replace_batchnorm_with_groupnorm(model, 8)
 
     if weights:
         model.load_state_dict(weights)
 
     return model
+
+
+def replace_batchnorm_with_groupnorm(model: nn.Module, num_groups=8):
+    for name, module in model.named_children():
+        if isinstance(module, nn.BatchNorm2d):
+            setattr(model, name, nn.GroupNorm(num_groups, module.num_features))
+        else:
+            replace_batchnorm_with_groupnorm(module, num_groups)
+
+
+if __name__ == "__main__":
+    m = Create_ResNet("r18", group_norm=True)
+    x = torch.rand((4, 3, 400, 400))
+    print(m(x).shape)
