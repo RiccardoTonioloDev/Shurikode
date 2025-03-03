@@ -82,7 +82,7 @@ clean_dataset = shurikode_dataset(
 clean_dataloader = clean_dataset.make_dataloader(batch_size=BATCH_SIZE)
 
 wandb.init(
-    project="Shurikode_decoder",
+    project="Shurikode",
     name=args.exp_name,
     config={
         "num_epochs": EPOCHS_N,
