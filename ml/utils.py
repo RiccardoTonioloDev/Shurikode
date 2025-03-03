@@ -10,6 +10,9 @@ from custom_types import EvaluationType
 
 
 def find_device():
+    """
+    Returns the type of device found on the system.
+    """
     device = "cpu"
     if torch.cuda.is_available():
         device = "cuda"
@@ -23,12 +26,25 @@ def find_device():
 def save_model(
     checkpoints_path: str, name: str, model_state_dict: Dict[str, Any]
 ) -> str:
+    """
+    Saves the model as a checkpoint file.
+
+    :param checkpoints_path: The path of the directory where checkpoints are stored.
+    :param name: The name that has to be used for the current checkpoint.
+    :param model_state_dict: The model state.
+
+    :return: The path to the newly created checkpoint file.
+    """
     checkpoint_filename = os.path.join(checkpoints_path, f"checkpoint_{name}.pth.tar")
     torch.save(model_state_dict, checkpoint_filename)
     return checkpoint_filename
 
 
-class Metric:
+class Result:
+    """
+    A class that represents evaluation results.
+    """
+
     def __init__(self, name: str, val: float) -> None:
         self.__name = name
         self.__val = val
@@ -41,6 +57,10 @@ class Metric:
 
 
 class ModelEvaluationFunction(ABC):
+    """
+    An abstract class for implementing evaluation functions for model prediction evaluation.
+    """
+
     def __init__(self, name: EvaluationType) -> None:
         super().__init__()
         self.__name = name
@@ -49,26 +69,41 @@ class ModelEvaluationFunction(ABC):
         return self.__name
 
     @abstractmethod
-    def __call__(self, pred: Tensor, gt: Tensor) -> Metric:
+    def __call__(self, pred: Tensor, gt: Tensor) -> Result:
+        """
+        Given the prediction logits and the ground truth, it computes the result on the current batch.
+        """
         pass
 
 
-class AccuracyVectorOutput(ModelEvaluationFunction):
+class AverageAccuracyVectorOutput(ModelEvaluationFunction):
     def __init__(self) -> None:
         super().__init__("Accuracy")
 
-    def __call__(self, pred: Tensor, gt: Tensor) -> Metric:
+    def __call__(self, pred: Tensor, gt: Tensor) -> Result:
         batch_size = pred.shape[0]
         pred = torch.softmax(pred, dim=1).argmax(dim=1)
         corrects = (pred == gt).int().sum()
-        return Metric(self.get_name(), corrects.item() / batch_size)
+        return Result(self.get_name(), corrects.item() / batch_size)
 
 
 class ConsoleStatsLogger:
     def __init__(self, epoch_n: int) -> None:
-        self.__epoch_n = epoch_n
+        """
+        Creates a logger for the `Result` type.
 
-    def __call__(self, type: str, stats: List[Metric], epoch: int) -> Any:
+        :param epoch_n: The total number of epochs for training.
+        """
+        self.__epoch_n = epoch_n - 1
+
+    def __call__(self, type: str, stats: List[Result], epoch: int) -> Any:
+        """
+        Logs the various collected statistics in the console.
+
+        :param type: The type of dataset which the statistics refers to.
+        :param stats: An array of results to be logged.
+        :param epoch: The current epoch of training.
+        """
         str_stats = "| "
         for stat in stats:
             str_stats = str_stats + f"{stat.get_name()}: {stat.get_value():.4f} | "
@@ -78,6 +113,13 @@ class ConsoleStatsLogger:
 def log_elapsed_remaining_total_time(
     elapsed_time: float, epochs_done: int, epochs_n: int
 ) -> None:
+    """
+    Logs the elapsed, remaining and total time for training.
+
+    :param elapsed_time: The elapsed number of seconds.
+    :param epochs_done: The number of completed epochs.
+    :param epochs_n: The total number of epochs.
+    """
     e_hours, remainder = divmod(elapsed_time, 3600)
     e_minutes, e_seconds = divmod(remainder, 60)
 
@@ -95,13 +137,26 @@ def log_elapsed_remaining_total_time(
 
 
 class ConditionalSave:
+    """
+    Given an objective to maximize or minimize, it saves the checkpoints that improve on the objective, while deleting
+    the less performing ones.
+    """
+
     def __init__(
         self,
         objective: Literal["minimize", "maximize"],
-        metric_name: str,
+        metric_name: EvaluationType,
         checkpoints_dir: str,
         experiment_name: str,
     ) -> None:
+        """
+        Creates the conditional saver.
+
+        :param objective: Explicits wether the objective metric has to be maximized or minimized.
+        :param metric_name: The metric name to be maximized or minimized.
+        :param checkpoints_dir: The path of where to save the checkpoints.
+        :param experiment_name: Name of the experiment (it will be used to personalize the checkpoint name).
+        """
         self.__checkpoint_files: List[str] = []
         self.__best_evaluation = float("-inf")
         if objective == "minimize":
@@ -114,7 +169,7 @@ class ConditionalSave:
     def __call__(
         self,
         model: nn.Module,
-        model_stats: List[Metric],
+        model_stats: List[Result],
         epoch: int,
     ) -> None:
         # Finding the evaluation metric index from the various statistics retrieved
@@ -146,3 +201,43 @@ class ConditionalSave:
                 if os.path.exists(ckpt_file):
                     os.remove(ckpt_file)
             self.__checkpoint_files = self.__checkpoint_files[-1:]
+
+
+def hamming_encode(bits: List[bool]) -> List[bool]:
+    """
+    Computes and add to the input the Hamming correction bits.
+
+    :param bits: A list of floats, that represents a list of bits.
+    :return: The original list of bit with the Hamming correciton bits correctly placed.
+    """
+    m = len(bits)
+    r = 0
+
+    # Determine the number of parity bits needed
+    while (2**r) < (m + r + 1):
+        r += 1
+
+    # Create an array with space for parity bits
+    encoded_length = m + r
+    encoded = [False] * encoded_length
+
+    # Place data bits into non-parity positions
+    j = 0
+    for i in range(1, encoded_length + 1):
+        if i & (i - 1) == 0:  # Powers of two are parity bits
+            continue
+        encoded[i - 1] = bits[j]
+        j += 1
+
+    # Calculate parity bits
+    for i in range(r):
+        parity_pos = 2**i
+        parity_value = False
+
+        for j in range(1, encoded_length + 1):
+            if j & parity_pos:
+                parity_value ^= encoded[j - 1]
+
+        encoded[parity_pos - 1] = parity_value
+
+    return encoded

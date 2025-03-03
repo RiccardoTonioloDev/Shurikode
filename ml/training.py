@@ -8,7 +8,7 @@ from utils import (
     log_elapsed_remaining_total_time,
     ConsoleStatsLogger,
     ConditionalSave,
-    Metric,
+    Result,
 )
 from custom_types import DeviceType
 
@@ -75,6 +75,17 @@ def train_epoch(
     device: DeviceType,
     evaluation_functions: Sequence[ModelEvaluationFunction],
 ):
+    """
+    Given the model and the evaluation functions to be used, it trains the model on a single epoch, while loggin the
+    various collected statistics in wandb.
+
+    :param model: The model that will be trained.
+    :param loss_function: The loss function to be used for training.
+    :param optimizer: The optimizer that will be used for training.
+    :param dataloader: The dataloader that will be used for training.
+    :param device: The device that will be used to compute operations.
+    :param evaluation_functions: A list of different evaluation functions that will be used to evaluate the model.
+    """
     model.train()
 
     # Retrieving the batch sample & ground truth
@@ -103,7 +114,19 @@ def validate_model(
     dataloader: DataLoader,
     device: DeviceType,
     evaluation_functions: Sequence[ModelEvaluationFunction],
-) -> List[Metric]:
+) -> List[Result]:
+    """
+    Given the model and the evaluation functions to be used, it will evaluate the model and return the collected
+    statistics.
+
+    :param model: The model that will be trained.
+    :param loss_function: The loss function that was used for training
+    :param dataloader: The dataloader that will be used for validation.
+    :param device: The device that will be used to compute operations.
+    :param evaluation_functions: A list of different evaluation functions that will be used to evaluate the model.
+
+    :return: A list of the various evaluation statistics.
+    """
     model.eval()
 
     evals = [0.0] * len(evaluation_functions)
@@ -121,8 +144,8 @@ def validate_model(
             for i, (eval_func) in enumerate(evaluation_functions):
                 evals[i] = ((evals[i] * i) + eval_func(pred, gt).get_value()) / (i + 1)
 
-    stats_w_names = [Metric("Loss", avg_loss)] + [
-        Metric(evaluation_functions[i].get_name(), evals[i])
+    stats_w_names = [Result("Loss", avg_loss)] + [
+        Result(evaluation_functions[i].get_name(), evals[i])
         for i in range(len(evaluation_functions))
     ]
     return stats_w_names

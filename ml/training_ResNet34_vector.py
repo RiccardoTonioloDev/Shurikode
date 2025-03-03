@@ -1,9 +1,9 @@
 from ml.custom_types import EvaluationType
 from training import train
 from model import Create_ResNet
-from dataset import shurikode_dataset_vector
+from dataset import shurikode_dataset
 from torch.optim import Adam
-from utils import ConditionalSave, AccuracyVectorOutput, find_device
+from utils import ConditionalSave, AverageAccuracyVectorOutput, find_device
 
 import torch
 import argparse
@@ -58,20 +58,26 @@ scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=scheduler_fun
 
 # LOSS & EVALUATION FUNCTIONS CREATION ###################################################################################
 loss_function = torch.nn.CrossEntropyLoss(label_smoothing=0.2)
-evaluation_functions = [AccuracyVectorOutput()]
+evaluation_functions = [AverageAccuracyVectorOutput()]
 
 
 # DATASETS & DATALOADERS CREATION ######################################################################################
-train_dataset = shurikode_dataset_vector(
-    data_path=args.datasets_path, type="train", variety=TRAIN_VARIETY
+train_dataset = shurikode_dataset(
+    data_path=args.datasets_path,
+    type="train",
+    variety=TRAIN_VARIETY,
+    n_classes=N_CLASSES,
 )
 train_dataloader = train_dataset.make_dataloader(batch_size=BATCH_SIZE)
-val_dataset = shurikode_dataset_vector(
-    data_path=args.datasets_path, type="val", variety=VAL_VARIETY
+val_dataset = shurikode_dataset(
+    data_path=args.datasets_path, type="val", variety=VAL_VARIETY, n_classes=N_CLASSES
 )
 val_dataloader = val_dataset.make_dataloader(batch_size=BATCH_SIZE)
-clean_dataset = shurikode_dataset_vector(
-    data_path=args.datasets_path, type="clean", variety=CLEAN_VARIETY
+clean_dataset = shurikode_dataset(
+    data_path=args.datasets_path,
+    type="clean",
+    variety=CLEAN_VARIETY,
+    n_classes=N_CLASSES,
 )
 clean_dataloader = clean_dataset.make_dataloader(batch_size=BATCH_SIZE)
 

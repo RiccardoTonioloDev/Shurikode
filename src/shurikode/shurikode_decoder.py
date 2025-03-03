@@ -12,7 +12,7 @@ class shurikode_decoder:
     __image_tensorizer = transforms.Compose(
         [
             transforms.ToImage(),
-            transforms.ToDtype(torch.float32, scale=False),
+            transforms.ToDtype(torch.float32, scale=True),
         ]
     )
 

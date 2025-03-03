@@ -1,3 +1,4 @@
+import math
 from torchvision import models
 from torch import nn
 from shurikode.utils import ModelType, DeviceType
@@ -17,6 +18,8 @@ def Create_ResNet_Shurikode(
     model_type: ModelType = "r50",
     out_features: int = 256,
     device: DeviceType = "cpu",
+    binary_output=False,
+    hamming_output=False,
 ):
     """
     Given the model type, the output_features and a device on which load the model, returns the ResNet model configured
@@ -25,10 +28,27 @@ def Create_ResNet_Shurikode(
     :param model_type: The type of ResNet. Available choices are 'r18', 'r34' and 'r50'.
     :param out_features: The number of output features. Corresponds to the possible number of labels.
     :param device: The type of device on which to load the model. Available choices are 'cpu', 'cuda' and 'mps'.
+    :param binary_output: Wether if the model outputs a binary encoded number.
+    :param hamming_output: Wether if to use hamming correction.
     """
+    assert (
+        binary_output or not hamming_output
+    ), "You can't apply hamming correction on a model with a non-binary output."
+
+    # New output feature calculation
+    output_features = out_features
+    if binary_output:
+        output_features = math.ceil(math.log(out_features, 2))
+        if hamming_output:
+            correction_bits = 0
+            # Determine the number of parity bits needed
+            while (2**correction_bits) < (output_features + correction_bits + 1):
+                correction_bits += 1
+            output_features += correction_bits
+
     str_model, func_model = model_selector[model_type]
     model = func_model()
-    model.fc = nn.Linear(model.fc.in_features, out_features)
+    model.fc = nn.Linear(model.fc.in_features, output_features)
     checkpoint_path = files("shurikode.ml_model").joinpath(f"{str_model}.pth.tar")
     state_dict = torch.load(
         str(checkpoint_path), map_location=torch.device(device), weights_only=True
