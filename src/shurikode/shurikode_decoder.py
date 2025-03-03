@@ -24,7 +24,7 @@ class shurikode_decoder:
         'r50'.
         """
         self.__device = find_device()
-        self.__m = Create_ResNet_Shurikode(m, 256, self.__device).eval()
+        self.__m = Create_ResNet_Shurikode(m, 256, self.__device)
 
     def __call__(self, img: Union[Image, Tensor]) -> int:
         """
