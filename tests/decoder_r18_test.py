@@ -1,12 +1,9 @@
-from shurikode import enc, dec
+from shurikode import Enc, Dec
 import torchvision.transforms.v2 as transforms
 import torch
 
 import pytest
-import shurikode
 import random
-import shurikode.shurikode_decoder
-import shurikode.shurikode_encoder
 
 IMAGES_DIAGONAL = 400
 
@@ -34,19 +31,19 @@ augmentators_2 = transforms.GaussianBlur(25, 10)
 
 @pytest.fixture(scope="module")
 def encoder():
-    return enc(10)
+    return Enc(10)
 
 
 @pytest.fixture(scope="module")
 def decoder_r18():
-    return dec("r18")
+    return Dec("r18")
 
 
 @pytest.mark.parametrize("value", indices)
 def test_decoding_r18(
     value: int,
-    encoder: shurikode.shurikode_encoder.shurikode_encoder,
-    decoder_r18: shurikode.shurikode_decoder.shurikode_decoder,
+    encoder: Enc,
+    decoder_r18: Dec,
 ):
     number_img = encoder.encode(value).get_PIL_image().convert("RGB")
     decoded_value_0 = decoder_r18(number_img)

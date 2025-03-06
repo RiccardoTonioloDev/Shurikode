@@ -53,7 +53,7 @@ from typing import Tuple
 
 dec = shurikode.dec() # Creates the decoder
 
-bits: Tuple[int,int,int,int,int,int,int,int] = dec(encoded_PIL_image) # Returns a tuple of 8 elements corresponding to the binary decoding of the code
+decoded_value: int = dec(encoded_PIL_image) # Returns the value encoded in the decoded image
 ```
 
 **NOTE**: the decoder accepts PIL images in RGB format (`Image` type), and PyTorch tensors (`torch.Tensor` type) with both 3 and 4 dimensions.

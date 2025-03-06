@@ -1,5 +1,5 @@
 from PIL.Image import Image
-from shurikode.shurikode_encoder import shurikode_encoder
+from shurikode.shurikode_encoder import ShurikodeEncoder
 from typing import Tuple
 from augmentators import (
     AugmentatorIf,
@@ -28,7 +28,7 @@ class shurikode_dataset_generator:
         """
         self.__variety = variety
         self.__post_processing = transforms
-        self.__encoder = shurikode_encoder(10)
+        self.__encoder = ShurikodeEncoder(10)
         self.__num_classes = num_classes
 
     def __len__(self):

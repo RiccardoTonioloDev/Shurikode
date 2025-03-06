@@ -2,7 +2,7 @@ from shurikode.utils import CanvaBit
 import numpy as np
 
 
-class shurikode_encoder:
+class ShurikodeEncoder:
     __diagonal = 10
 
     __positions = [
@@ -28,7 +28,7 @@ class shurikode_encoder:
         self.__canvabit = CanvaBit(self.__diagonal, size, padding=True)
         self.__matrix = np.zeros([self.__diagonal, self.__diagonal])
 
-    def encode(self, value: int) -> "shurikode_encoder":
+    def encode(self, value: int) -> "ShurikodeEncoder":
         """
         Given the value to be encoded, it returns a `shurikode_encoder` object that contains the newly created shurikode
         code.

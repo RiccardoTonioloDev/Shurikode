@@ -8,7 +8,7 @@ import torchvision.transforms.v2 as transforms
 import torch
 
 
-class shurikode_decoder:
+class ShurikodeDecoder:
     __image_tensorizer = transforms.Compose(
         [
             transforms.ToImage(),
@@ -25,7 +25,7 @@ class shurikode_decoder:
         """
         self.__device = find_device()
         self.__m = Create_ResNet_Shurikode(
-            m, 256, self.__device, group_norm=m == "r18"
+            m, 256, self.__device, group_norm=True
         ).eval()
 
     def __call__(self, img: Union[Image, Tensor]) -> int:
@@ -59,7 +59,7 @@ class shurikode_decoder:
             "mps",
         ], f"The device type has to be between 'cuda', 'cpu' and 'mps'. Provided device: {device}."
         if isinstance(img, Image):
-            img = cast(Tensor, shurikode_decoder.__image_tensorizer(img))
+            img = cast(Tensor, ShurikodeDecoder.__image_tensorizer(img))
         if isinstance(img, Tensor):
             if len(img.shape) < 4:
                 img = img.unsqueeze(0)

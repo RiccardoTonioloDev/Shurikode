@@ -11,7 +11,11 @@ setup(
     package_dir={"": "src"},
     include_package_data=True,
     package_data={
-        "shurikode.ml_model": ["ResNet50.pth.tar"],
+        "shurikode.ml_model": [
+            "ResNet50.pth.tar",
+            "ResNet34.pth.tar",
+            "ResNet18.pth.tar",
+        ],
     },
     install_requires=["Pillow", "numpy", "torch", "torchvision"],
 )
