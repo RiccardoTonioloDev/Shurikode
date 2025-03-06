@@ -36,7 +36,7 @@ def encoder():
 
 @pytest.fixture(scope="module")
 def decoder_r18():
-    return Dec("r18")
+    return Dec("S")
 
 
 @pytest.mark.parametrize("value", indices)

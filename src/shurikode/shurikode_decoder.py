@@ -2,7 +2,7 @@ from shurikode.ml_model.m import Create_ResNet_Shurikode
 from typing import Union, cast
 from PIL.Image import Image
 from torch import Tensor
-from shurikode.utils import find_device, ModelType
+from shurikode.utils import find_device, ModelSizes, ModelType
 import torchvision.transforms.v2 as transforms
 
 import torch
@@ -16,7 +16,7 @@ class ShurikodeDecoder:
         ]
     )
 
-    def __init__(self, m: ModelType = "r50"):
+    def __init__(self, size: ModelSizes = "M"):
         """
         Initializes a `shurikode_decoder` object.
 
@@ -24,8 +24,15 @@ class ShurikodeDecoder:
         'r50'.
         """
         self.__device = find_device()
+
+        model_type: ModelType = "r50"
+        if size == "M":
+            model_type = "r34"
+        elif size == "S":
+            model_type = "r18"
+
         self.__m = Create_ResNet_Shurikode(
-            m, 256, self.__device, group_norm=True
+            model_type, 256, self.__device, group_norm=True
         ).eval()
 
     def __call__(self, img: Union[Image, Tensor]) -> int:

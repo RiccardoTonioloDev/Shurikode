@@ -80,6 +80,8 @@ DeviceType = Literal["cpu", "cuda", "mps"]
 
 ModelType = Literal["r18", "r34", "r50"]
 
+ModelSizes = Literal["S", "M", "L"]
+
 
 def find_device() -> DeviceType:
     """

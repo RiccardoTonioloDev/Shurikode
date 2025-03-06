@@ -33,7 +33,7 @@ def encoder():
 
 @pytest.fixture(scope="module")
 def decoder_r50():
-    return Dec("r50")
+    return Dec("L")
 
 
 @pytest.mark.parametrize("value", indices)

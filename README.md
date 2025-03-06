@@ -34,9 +34,9 @@ pip install .
 ### Encoder usage
 
 ```python
-import shurikode
+from shurikode import Enc
 
-enc = shurikode.enc(size=10) # The size specifies the scale of the image that will be generated.
+enc = Enc(size=10) # The size specifies the scale of the image that will be generated.
 
 encoded_number = enc.encode(255) # The result remains inside of the encoder object.
 
@@ -48,13 +48,14 @@ encoded_number.save(path="./") # Saves the encoded image in the specified path.
 ### Decoder usage
 
 ```python
-import shurikode
-from typing import Tuple
+from shurikode import Dec
 
-dec = shurikode.dec() # Creates the decoder
+dec = Dec("M") # Creates the decoder with medium size (you can even choose "S" for small and "L" for large size)
 
 decoded_value: int = dec(encoded_PIL_image) # Returns the value encoded in the decoded image
 ```
+
+**NOTE**: the various sizes of the decoder impact only on energy consumption and inference time. They all achieve the same accuracy on validation tests. I left to option just to let you decide what you want to use.
 
 **NOTE**: the decoder accepts PIL images in RGB format (`Image` type), and PyTorch tensors (`torch.Tensor` type) with both 3 and 4 dimensions.
 
