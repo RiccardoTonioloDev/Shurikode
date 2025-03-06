@@ -3,6 +3,8 @@ from shurikode.shurikode_encoder import shurikode_encoder
 from typing import Tuple
 from augmentators import (
     AugmentatorIf,
+    RandomBrightnessAdjust,
+    RandomPieceCutterDynamicFillerColor,
     RandomRotationDynamicFillerColor,
     RandomPerspectiveDynamicFillerColor,
     RandomScalerDynamicFillerColor,
@@ -93,14 +95,21 @@ if __name__ == "__main__":
             t.Resize(IMAGES_DIAGONAL),
             AugmentatorIf(
                 0.5,
-                then=RandomRotationDynamicFillerColor((-90, 90), p=1),
-                otherwise=RandomPerspectiveDynamicFillerColor(0.25, p=1),
+                then=RandomRotationDynamicFillerColor((-90, 90), p=0.7),
+                otherwise=RandomPerspectiveDynamicFillerColor(0.25, p=0.7),
             ),
-            RandomScalerDynamicFillerColor(0, 0.05, diagonal=IMAGES_DIAGONAL, p=0.6),
+            RandomPieceCutterDynamicFillerColor(IMAGES_DIAGONAL, p=0.1),
+            RandomScalerDynamicFillerColor(0.0, 0.20, diagonal=IMAGES_DIAGONAL, p=0.6),
             RandomWaveDistortion(IMAGES_DIAGONAL, IMAGES_DIAGONAL, 0.2, p=0.15),
             RandomizeAugmentator(t.GaussianBlur(9, 2.5), p=0.33),  # light
             RandomizeAugmentator(t.GaussianBlur(15, 4.75), p=0.33),  # strong
             RandomizeAugmentator(t.GaussianBlur(21, 7), p=0.33),  # stronger
+            RandomizeAugmentator(t.GaussianNoise(0, 0.05), p=0.3),  # stronger
+            RandomizeAugmentator(t.GaussianNoise(0, 0.1), p=0.2),  # stronger
+            RandomizeAugmentator(t.GaussianNoise(0, 0.2), p=0.1),  # stronger
+            RandomBrightnessAdjust(p=0.5),
+            t.RandomErasing(p=0.4, scale=(0.1, 0.3)),
+            t.RandomErasing(p=0.4, scale=(0.1, 0.3)),
             t.ToPILImage(),
         ]
     )

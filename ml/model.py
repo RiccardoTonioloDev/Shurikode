@@ -49,8 +49,14 @@ def Create_ResNet(
         w = model_selector[resnet_type][0]
 
     # Modifying the output linear layer
-    model: nn.Module = model_selector[resnet_type][1](weights=w)
+    model: nn.Module = model_selector[resnet_type][1](
+        weights=(
+            w if not group_norm else None
+        )  # ResNets are trained with batch norms. If group_norm is selected, then
+        # we need a better way (the default way, kaiming initialization) to initialize weights
+    )
     model.fc = nn.Linear(model.fc.in_features, output_features)
+    model.fc.apply(initialize_resnet_weights)
 
     # Replacing batch normalization with group normalization
     if group_norm:
@@ -68,6 +74,16 @@ def replace_batchnorm_with_groupnorm(model: nn.Module, num_groups=8):
             setattr(model, name, nn.GroupNorm(num_groups, module.num_features))
         else:
             replace_batchnorm_with_groupnorm(module, num_groups)
+
+
+def initialize_resnet_weights(m):
+    if isinstance(m, nn.Conv2d):
+        nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+        if m.bias is not None:
+            nn.init.zeros_(m.bias)
+    elif isinstance(m, nn.Linear):
+        nn.init.kaiming_uniform_(m.weight, mode="fan_in", nonlinearity="linear")
+        nn.init.zeros_(m.bias)
 
 
 if __name__ == "__main__":

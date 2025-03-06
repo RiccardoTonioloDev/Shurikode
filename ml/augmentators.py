@@ -1,31 +1,52 @@
-from abc import ABC, abstractmethod
+from __future__ import annotations
+import time
 from torchvision.transforms.v2 import functional as F, InterpolationMode
 from typing import Callable, List, Tuple
+from abc import ABC, abstractmethod
 from random import random
 from torch import Tensor
 
 import torch
 import random
-import torchvision.transforms.v2 as transforms
 
 
 class ColorGenerator:
+    """
+    Generates colors so that each of its subscribers receives the same one, but it changes them every new iteration.
+    """
+
     def __init__(self) -> None:
         self.__i = 0
         self.__fill = (random.random(), random.random(), random.random())
         self.__finished_subscribing = False
         self.__subscribers: List[object] = []
 
-    def subscribe(self, subscriber: object) -> None:
+    def subscribe(self, subscriber: DynamicColorAugmentators) -> None:
+        """
+        Subscribes the subscriber to the color generator, in order for it to provide colors when asked.
+
+        :param subscriber: The augmentator that will ask for colors using the `.get_colors()` method.
+        """
         assert (
             not self.__finished_subscribing
         ), "After you called get_color for the first time, you can no longer \
             subscribe with other augmentators."
         self.__subscribers.append(subscriber)
 
-    def get_color(self, subscriber: object) -> Tuple[float, float, float]:
+    def get_color(
+        self, color_asker: DynamicColorAugmentators
+    ) -> Tuple[float, float, float]:
+        """
+        Returns the color of the current iteration.
+
+        :param color_asker: The augmentator that is asking for the color of the current iteration.
+        """
+        assert (
+            color_asker in self.__subscribers
+        ), "The color asker must have previously subscribed to the color generator \
+        in order to receive a color."
         self.__finished_subscribing = True
-        sub_idx = self.__subscribers.index(subscriber)
+        sub_idx = self.__subscribers.index(color_asker)
         if self.__i < sub_idx:
             self.__i = sub_idx
         elif self.__i > sub_idx:
@@ -41,24 +62,48 @@ color_gen = ColorGenerator()
 
 
 class DynamicColorAugmentators(ABC):
+    """
+    An abstract class that will be used to create augmentators who will share a color generator.
+    """
 
     def __init__(self) -> None:
         self.__color_gen = color_gen
         self.__color_gen.subscribe(self)
 
     def __call__(self, img: Tensor) -> Tensor:
+        """
+        Applies the augmentation to the given image.
+
+        :param img: The image to augment.
+        """
         fill = self.__color_gen.get_color(self)
         return self._augment(img, fill)
 
     @abstractmethod
     def _augment(self, img: Tensor, fill: ColorType) -> Tensor:
+        """
+        Applies the augmentation to the image, using the given filler color.
+
+        :param img: The image to augment.
+        :param fill: The tuple representing the color.
+        """
         pass
 
 
 class RandomRotationDynamicFillerColor(DynamicColorAugmentators):
+    """
+    Applies a random rotation (given an interval of degrees), to the given image.
+    """
+
     def __init__(
         self, degrees: Tuple[int, int], diagonal: int = 400, expand=True, p: float = 0.5
     ):
+        """
+        :param degrees: The interval of degrees to be used for randomly choosing the rotation degree.
+        :param diagonal: The number of pixels in the diagonal.
+        :param expand: Wether to expand the augmented image in order to not loose information of the original one.
+        :param p: The proability of the augmentation to take place.
+        """
         super().__init__()
         self.__degrees = degrees
         self.__expand = expand
@@ -86,12 +131,21 @@ class RandomRotationDynamicFillerColor(DynamicColorAugmentators):
 
 
 class RandomPerspectiveDynamicFillerColor(DynamicColorAugmentators):
+    """
+    Applies a random change in perspective, to the given image.
+    """
+
     def __init__(
         self,
         distortion_scale=0.5,
         interpolation=F.InterpolationMode.NEAREST,
         p: float = 0.5,
     ):
+        """
+        :param distortion_scale: The amount of distortion to be applied
+        :param interpolation: The interpolation mode to be used.
+        :param p: The proability of the augmentation to take place.
+        """
         super().__init__()
         self.__distortion_scale = distortion_scale
         self.__p = p
@@ -143,12 +197,21 @@ class RandomPerspectiveDynamicFillerColor(DynamicColorAugmentators):
 
 
 class RandomPieceCutterDynamicFillerColor(DynamicColorAugmentators):
+    """
+    Cuts a random portion of the image.
+    """
+
     def __init__(
         self,
         diagonal=400,
         portion_interval: Tuple[float, float] = (0.5, 1.0),
         p: float = 0.5,
     ):
+        """
+        :param diagonal: The number of pixels in the diagonal.
+        :param portion_interval: The interval of percentages of cut.
+        :param p: The proability of the augmentation to take place.
+        """
         super().__init__()
         self.__diagonal = diagonal
         self.__p = p
@@ -183,7 +246,17 @@ class RandomPieceCutterDynamicFillerColor(DynamicColorAugmentators):
 
 
 class RandomScalerDynamicFillerColor(DynamicColorAugmentators):
+    """
+    Adds a random padding to the given image.
+    """
+
     def __init__(self, min_pad=0.0, max_pad=0.3, diagonal=400, p: float = 0.5):
+        """
+        :param min_pad: The minimum padding that will be able to perform.
+        :param max_pad: The maximum padding that will be able to perform.
+        :param diagonal: The number of pixels in the diagonal.
+        :param p: The proability of the augmentation to take place.
+        """
         super().__init__()
         self.__min_pad = min_pad * diagonal
         self.__max_pad = max_pad * diagonal
@@ -195,70 +268,66 @@ class RandomScalerDynamicFillerColor(DynamicColorAugmentators):
             return img
         r = random.random()
         pad = int((self.__max_pad - self.__min_pad) * r + self.__min_pad)
-        padder = transforms.Pad(padding=pad, fill=fill, padding_mode="constant")
-        img = padder(img)
+        img = F.pad(img, [pad, pad, pad, pad], [fill[0], fill[1], fill[2]], "constant")
         return torch.nn.functional.interpolate(
             img.unsqueeze(0), (self.__diagonal, self.__diagonal), mode="bilinear"
         ).squeeze(0)
 
 
-class RandomFishEye:
-    def __init__(self, p: float, height: int, width: int, magnitude: float = 0.25):
-        self.__h = height
-        self.__w = width
-        self.__magnitude = magnitude
-        self.__p = p
-
-    def __call__(self, img: Tensor) -> Tensor:
-        if random.random() > self.__p:
-            return img
-        choosen_center = torch.tensor(self.__compute_center())
-        xx, yy = torch.linspace(-1, 1, self.__w), torch.linspace(-1, 1, self.__h)
-        gridy, gridx = torch.meshgrid(yy, xx)  # create identity grid
-        grid = torch.stack([gridx, gridy], dim=-1)
-        d = choosen_center - grid  # calculate the distance(cx - x, cy - y)
-        d_sum = torch.sqrt((d**2).sum(dim=-1))  # sqrt((cx-x)^2+(cy-y)^2)
-        grid += d * d_sum.unsqueeze(-1) * self.__magnitude
-        return torch.nn.functional.grid_sample(
-            img.unsqueeze(0), grid.unsqueeze(0), align_corners=False
-        ).squeeze(0)
-
-    def __compute_center(self) -> Tuple[float, float]:
-        computed_rand_center_x = random.random() * 0.2 - 0.1
-        computed_rand_center_y = random.random() * 0.2 - 0.1
-        return computed_rand_center_x, computed_rand_center_y
-
-
 class RandomizeAugmentator:
+    """
+    Gives the ability to randomize a non-random augmentator.
+    """
+
     def __init__(self, augmentator: Callable, p: float) -> None:
+        """
+        :param augmentator: The augmentator to randomize.
+        :param p: The proability of the augmentation to take place.
+        """
         self.__aug = augmentator
         self.__p = p
 
     def __call__(self, img: Tensor) -> Tensor:
+        """
+        Returns the transformed image, if the augmentator was used, otherwise it maintains the image intact.
+        """
         return img if self.__p < random.random() else self.__aug(img)
 
 
 class AugmentatorIf:
+    """
+    Choose between two different augmentators, with the first having a p probability of being executed, and the second
+    a 1-p probability.
+    """
+
     def __init__(self, p: float, then: Callable, otherwise: Callable) -> None:
+        """
+        :param p: The proability of the augmentation to take place.
+        :param then: The first augmentator.
+        :param otherwise: The second augmentator.
+        """
         self.__then = then
         self.__otherwise = otherwise
         self.__p = p
 
     def __call__(self, img: Tensor) -> Tensor:
+        """
+        Returns the transformed image, with the randomly chosen augmentation.
+        """
         return self.__then(img) if random.random() > self.__p else self.__otherwise(img)
 
 
 class RandomWaveDistortion:
+    """
+    Applies a single large bending curve effect, as if the image were attached to a large pipe.
+    """
 
     def __init__(self, height: int, width: int, curvature: float = 0.2, p=0.5):
         """
-        Apply a single large bending curve effect, as if the image were attached to a large pipe.
-
-        Args:
-            p (float): Probability of applying the transformation.
-            height (int): Image height.
-            width (int): Image width.
-            curvature (float): Controls the intensity of the bending effect.
+        :param p: The proability of the augmentation to take place.
+        :param height: Image height.
+        :param width): Image width.
+        :param curvature: Controls the intensity of the bending effect.
         """
         self.__h = height
         self.__w = width
@@ -267,13 +336,7 @@ class RandomWaveDistortion:
 
     def __call__(self, img: Tensor) -> Tensor:
         """
-        Apply the pipe bending effect to the image with probability `p`.
-
-        Args:
-            img (Tensor): Image tensor of shape [C, H, W].
-
-        Returns:
-            Tensor: Distorted image tensor.
+        Applies the pipe bending effect to the image with probability p.
         """
         if random.random() > self.__p:
             return img
@@ -285,11 +348,11 @@ class RandomWaveDistortion:
 
         # Apply a uniform pipe bending effect (constant displacement across the entire height)
         fun_to_apply = torch.cos
-        value_to_add = torch.pi / random.random()
+        value_to_scale = 3 + random.random()
         if random.random() < 0.5:
             fun_to_apply = torch.sin
         grid[..., 0] += self.__curvature * fun_to_apply(
-            torch.pi * grid[..., 1] / 2 + value_to_add
+            torch.pi * grid[..., 1] / (value_to_scale)
         )  # Sinusoidal displacement
 
         # Apply grid_sample to warp the image
@@ -300,3 +363,31 @@ class RandomWaveDistortion:
             padding_mode="border",
             align_corners=True,
         ).squeeze(0)
+
+
+class RandomBrightnessAdjust:
+    """
+    Randomly modifies the brightness, given an interval of brightness.
+    """
+
+    def __init__(self, brightness_interval=(0.8, 1.2), p=0.5):
+        """
+        :param brightness_interval: The interval of brightness that will be used.
+        :param p: The proability of the augmentation to take place.
+        """
+        self.__bri_interval = brightness_interval
+        self.__p = p
+
+    def __call__(self, img: Tensor) -> Tensor:
+        """
+        Applies the brightness augmentation with probability p.
+        """
+        if random.random() > self.__p:
+            return img
+
+        brightness_factor = self.__bri_interval[0] + random.random() * (
+            self.__bri_interval[1] - self.__bri_interval[0]
+        )
+
+        img = F.adjust_brightness_image(img, brightness_factor)
+        return img

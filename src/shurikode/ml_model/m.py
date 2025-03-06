@@ -20,6 +20,7 @@ def Create_ResNet_Shurikode(
     device: DeviceType = "cpu",
     binary_output=False,
     hamming_output=False,
+    group_norm=False,
 ):
     """
     Given the model type, the output_features and a device on which load the model, returns the ResNet model configured
@@ -53,5 +54,15 @@ def Create_ResNet_Shurikode(
     state_dict = torch.load(
         str(checkpoint_path), map_location=torch.device(device), weights_only=True
     )
+    if group_norm:
+        replace_batchnorm_with_groupnorm(model, 8)
     model.load_state_dict(state_dict)
     return model.to(device)
+
+
+def replace_batchnorm_with_groupnorm(model: nn.Module, num_groups=8):
+    for name, module in model.named_children():
+        if isinstance(module, nn.BatchNorm2d):
+            setattr(model, name, nn.GroupNorm(num_groups, module.num_features))
+        else:
+            replace_batchnorm_with_groupnorm(module, num_groups)

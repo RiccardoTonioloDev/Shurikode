@@ -29,7 +29,7 @@ augmentators_1 = transforms.Pad(
     ],
     padding_mode="constant",
 )
-augmentators_2 = transforms.GaussianBlur(21, 7)
+augmentators_2 = transforms.GaussianBlur(25, 10)
 
 
 @pytest.fixture(scope="module")
