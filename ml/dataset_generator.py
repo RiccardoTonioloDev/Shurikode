@@ -4,6 +4,7 @@ from typing import Tuple
 from augmentators import (
     AugmentatorIf,
     RandomBrightnessAdjust,
+    RandomCropRandomSize,
     RandomPieceCutterDynamicFillerColor,
     RandomRotationDynamicFillerColor,
     RandomPerspectiveDynamicFillerColor,
@@ -110,6 +111,7 @@ if __name__ == "__main__":
             RandomBrightnessAdjust(p=0.5),
             t.RandomErasing(p=0.4, scale=(0.1, 0.3)),
             t.RandomErasing(p=0.4, scale=(0.1, 0.3)),
+            RandomCropRandomSize(0.1, 0.3, IMAGES_DIAGONAL, p=0.15),
             t.ToPILImage(),
         ]
     )

@@ -1,5 +1,4 @@
 from __future__ import annotations
-import time
 from torchvision.transforms.v2 import functional as F, InterpolationMode
 from typing import Callable, List, Tuple
 from abc import ABC, abstractmethod
@@ -269,6 +268,41 @@ class RandomScalerDynamicFillerColor(DynamicColorAugmentators):
         r = random.random()
         pad = int((self.__max_pad - self.__min_pad) * r + self.__min_pad)
         img = F.pad(img, [pad, pad, pad, pad], [fill[0], fill[1], fill[2]], "constant")
+        return torch.nn.functional.interpolate(
+            img.unsqueeze(0), (self.__diagonal, self.__diagonal), mode="bilinear"
+        ).squeeze(0)
+
+
+class RandomCropRandomSize:
+    """
+    It does a central crop and then rescales the image to the original dimensions.
+    """
+
+    def __init__(self, min_crop=0.0, max_crop=0.3, diagonal=400, p: float = 0.5):
+        """
+        :param min_pad: The minimum percenatege of crop that will be able to perform.
+        :param max_pad: The maximum percenatege of crop that will be able to perform.
+        :param diagonal: The number of pixels in the diagonal.
+        :param p: The proability of the augmentation to take place.
+        """
+        assert (
+            min_crop <= 1
+        ), f"The maxium crop size can be only 1. min_crop found to be {min_crop}."
+        assert (
+            max_crop <= 1
+        ), f"The maxium crop size can be only 1. max_crop found to be {max_crop}."
+        self.__min_crop = (1 - min_crop) * diagonal
+        self.__max_crop = (1 - max_crop) * diagonal
+        self.__diagonal = diagonal
+        self.__p = p
+
+    def __call__(self, img: Tensor):
+        if random.random() > self.__p:
+            return img
+        r = random.random()
+        crop_hw = int((self.__max_crop - self.__min_crop) * r + self.__min_crop)
+        crop_top_left = int((self.__diagonal - crop_hw) / 2)
+        img = F.crop(img, crop_top_left, crop_top_left, crop_hw, crop_hw)
         return torch.nn.functional.interpolate(
             img.unsqueeze(0), (self.__diagonal, self.__diagonal), mode="bilinear"
         ).squeeze(0)
