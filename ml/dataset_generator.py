@@ -108,9 +108,12 @@ if __name__ == "__main__":
             RandomizeAugmentator(t.GaussianNoise(0, 0.05), p=0.3),  # stronger
             RandomizeAugmentator(t.GaussianNoise(0, 0.1), p=0.2),  # stronger
             RandomizeAugmentator(t.GaussianNoise(0, 0.2), p=0.1),  # stronger
-            RandomBrightnessAdjust(p=0.5),
-            t.RandomErasing(p=0.4, scale=(0.1, 0.3)),
-            t.RandomErasing(p=0.4, scale=(0.1, 0.3)),
+            RandomBrightnessAdjust(brightness_interval=(0.7, 1.3), p=0.5),
+            t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
+            t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
+            t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
+            t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
+            t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
             RandomCropRandomSize(0.1, 0.3, IMAGES_DIAGONAL, p=0.15),
             t.ToPILImage(),
         ]
