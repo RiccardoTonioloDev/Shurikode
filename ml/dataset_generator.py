@@ -133,7 +133,7 @@ if __name__ == "__main__":
         post_processing_w_augmentations, args.train_variety, NUM_CLASSES
     )
     for i in range(NUM_CLASSES * args.train_variety):
-        series = int(i / 256)
+        series = int(i / NUM_CLASSES)
         pil_image, value = dataset[i]
         pil_image.save(os.path.join(args.train_dir, f"{series:03}-{value:03}.png"))
 
@@ -141,7 +141,7 @@ if __name__ == "__main__":
         post_processing_w_augmentations, args.val_variety, NUM_CLASSES
     )
     for i in range(NUM_CLASSES * args.val_variety):
-        series = int(i / 256)
+        series = int(i / NUM_CLASSES)
         pil_image, value = dataset[i]
         pil_image.save(os.path.join(args.val_dir, f"{series:03}-{value:03}.png"))
 
@@ -149,7 +149,7 @@ if __name__ == "__main__":
         post_processing_wo_augmentations, 1, NUM_CLASSES
     )
     for i in range(NUM_CLASSES):
-        series = int(i / 256)
+        series = int(i / NUM_CLASSES)
         pil_image, value = dataset[i]
         pil_image.save(
             os.path.join(args.clean_examples_dir, f"{series:03}-{value:03}.png")
