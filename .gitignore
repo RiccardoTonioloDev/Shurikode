@@ -164,6 +164,7 @@ main.py
 slurm_files/
 output_files/
 wandb/
+real_test.py
 
 # PyTorch checkpoints
 *.pth
