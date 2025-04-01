@@ -101,7 +101,9 @@ if __name__ == "__main__":
             ),
             AugmentatorIf(
                 0.4,
-                then=RandomPieceCutterDynamicFillerColor(IMAGES_DIAGONAL, p=0.25),
+                then=RandomPieceCutterDynamicFillerColor(
+                    IMAGES_DIAGONAL, portion_interval=(0.5, 0.8), p=0.25
+                ),
                 otherwise=RandomScalerDynamicFillerColor(
                     0.0, 0.4, diagonal=IMAGES_DIAGONAL, p=1
                 ),
