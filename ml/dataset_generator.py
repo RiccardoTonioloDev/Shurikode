@@ -96,25 +96,31 @@ if __name__ == "__main__":
             t.Resize(IMAGES_DIAGONAL),
             AugmentatorIf(
                 0.5,
-                then=RandomRotationDynamicFillerColor((-90, 90), p=0.7),
-                otherwise=RandomPerspectiveDynamicFillerColor(0.25, p=0.7),
+                then=RandomRotationDynamicFillerColor((-90, 90), p=0.8),
+                otherwise=RandomPerspectiveDynamicFillerColor(0.25, p=0.8),
             ),
-            RandomPieceCutterDynamicFillerColor(IMAGES_DIAGONAL, p=0.1),
-            RandomScalerDynamicFillerColor(0.0, 0.20, diagonal=IMAGES_DIAGONAL, p=0.6),
+            AugmentatorIf(
+                0.4,
+                then=RandomPieceCutterDynamicFillerColor(IMAGES_DIAGONAL, p=0.25),
+                otherwise=RandomScalerDynamicFillerColor(
+                    0.0, 0.4, diagonal=IMAGES_DIAGONAL, p=1
+                ),
+            ),
             RandomWaveDistortion(IMAGES_DIAGONAL, IMAGES_DIAGONAL, 0.2, p=0.15),
-            RandomizeAugmentator(t.GaussianBlur(9, 2.5), p=0.33),  # light
-            RandomizeAugmentator(t.GaussianBlur(15, 4.75), p=0.33),  # strong
-            RandomizeAugmentator(t.GaussianBlur(21, 7), p=0.33),  # stronger
+            RandomizeAugmentator(t.GaussianBlur(9, 2.5), p=0.25),  # light
+            RandomizeAugmentator(t.GaussianBlur(15, 4.75), p=0.25),  # strong
+            RandomizeAugmentator(t.GaussianBlur(15, 4.75), p=0.25),  # strong
+            RandomizeAugmentator(t.GaussianBlur(21, 7), p=0.25),  # stronger
             RandomizeAugmentator(t.GaussianNoise(0, 0.05), p=0.3),  # stronger
             RandomizeAugmentator(t.GaussianNoise(0, 0.1), p=0.2),  # stronger
             RandomizeAugmentator(t.GaussianNoise(0, 0.2), p=0.1),  # stronger
-            RandomBrightnessAdjust(brightness_interval=(0.7, 1.3), p=0.5),
+            RandomBrightnessAdjust(brightness_interval=(0.5, 1.5), p=0.5),
             t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
             t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
             t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
             t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
             t.RandomErasing(p=0.4, scale=(0.1, 0.15)),
-            RandomCropRandomSize(0.1, 0.3, IMAGES_DIAGONAL, p=0.15),
+            RandomCropRandomSize(0.1, 0.3, IMAGES_DIAGONAL, p=0.10),
             t.ToPILImage(),
         ]
     )
