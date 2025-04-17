@@ -25,7 +25,7 @@ class real_dataset(Dataset):
     def __len__(self):
         return len(self.data_df)
 
-    def __getitem__(self, index: int) -> Tuple[Tensor, Tensor, str]:
+    def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
         img_file_name, img_class = self.data_df.iloc[index][["Img_Name", "Class"]]
         img_path = os.path.join(self.images_folder, img_file_name)
         assert os.path.exists(img_path), f"The image '{img_file_name}' doesn't exist."
@@ -36,4 +36,4 @@ class real_dataset(Dataset):
             raise RuntimeError(
                 f"Error: {e}\n\nCan't open image with the following path: {img_path}."
             )
-        return image_tensor, img_class, img_path
+        return image_tensor, img_class
