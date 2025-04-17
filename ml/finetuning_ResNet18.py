@@ -1,11 +1,17 @@
 from custom_types import EvaluationType
-from training import train
+from training import train, finetune
 from model import Create_ResNet
 from dataset import shurikode_dataset
 from realset import real_dataset
 from torch.optim import Adam
 from torch.utils.data import ConcatDataset, random_split, DataLoader
-from utils import ConditionalSave, AverageAccuracyVectorOutput, find_device, set_seed
+from utils import (
+    ConditionalSave,
+    AverageAccuracyVectorOutput,
+    find_device,
+    set_seed,
+    load_weights,
+)
 
 import torch
 import argparse
@@ -30,11 +36,16 @@ parser.add_argument(
     type=str,
     help="The directory where the real SHURIKODE dataset is located.",
 )
+parser.add_argument(
+    "--selected_checkpoint_file_path",
+    type=str,
+    help="The path to the checkpoint file to be used.",
+)
 args = parser.parse_args()
 
 # Model training parameters
 N_CLASSES = 256
-EPOCHS_N = 90
+EPOCHS_N = 10
 LR = 1e-4
 TRAIN_VARIETY = 400
 VAL_VARIETY = 30
@@ -49,7 +60,7 @@ device = find_device()
 
 # MODEL CREATION #######################################################################################################
 m = Create_ResNet("r18", n_classes=N_CLASSES, group_norm=True).to(device)
-
+m.load_state_dict(load_weights(args.selected_checkpoint_file_path, device))
 
 # OPTIMIZER & SCHEDULER CREATION #######################################################################################
 optimizer = Adam(m.parameters(), lr=LR, betas=(0.9, 0.999), eps=1e-8)
@@ -71,6 +82,7 @@ evaluation_functions = [AverageAccuracyVectorOutput()]
 real_dtst = real_dataset(args.real_dataset_path)
 set_seed(42)
 real_train_dataset, real_val_dataset = random_split(real_dtst, [0.25, 0.75])
+real_val_dataloader = DataLoader(real_val_dataset, BATCH_SIZE, False)
 
 # DATASETS & DATALOADERS CREATION ######################################################################################
 train_dataset = shurikode_dataset(
@@ -102,13 +114,14 @@ wandb.init(
     },
 )
 
-train(
+finetune(
     model=m,
     loss_function=loss_function,
     optimizer=optimizer,
     train_dataloader=train_dataloader,
     val_dataloader=val_dataloader,
     clean_dataloader=clean_dataloader,
+    real_val_dataloader=real_val_dataloader,
     device=device,
     evaluation_functions=evaluation_functions,
     epoch_n=EPOCHS_N,

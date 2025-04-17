@@ -67,6 +67,62 @@ def train(
         log_elapsed_remaining_total_time(elapsed_time, i + 1, epoch_n)
 
 
+def finetune(
+    model: nn.Module,
+    loss_function: Callable[[Tensor, Tensor], Tensor],
+    optimizer: Optimizer,
+    train_dataloader: DataLoader,
+    val_dataloader: DataLoader,
+    clean_dataloader: DataLoader,
+    real_val_dataloader: DataLoader,
+    device: DeviceType,
+    evaluation_functions: Sequence[ModelEvaluationFunction],
+    epoch_n: int,
+    saver: ConditionalSave,
+):
+    console_logger = ConsoleStatsLogger(epoch_n)
+    elapsed_time = 0
+
+    for i in range(epoch_n):
+        start_time_epoch = time.time()
+
+        # Train the model on the train dataset
+        train_epoch(
+            model,
+            loss_function,
+            optimizer,
+            train_dataloader,
+            device,
+            evaluation_functions,
+        )
+
+        # Validate the model on the validation dataset
+        val_stats = validate_model(
+            model, loss_function, val_dataloader, device, evaluation_functions
+        )
+        console_logger("Validation", val_stats, i)
+
+        # Saving the model if it's performing better than the previously saved model
+        saver(model, val_stats, i)
+
+        # Validate the model on the clean (non augmented) dataset
+        clean_stats = validate_model(
+            model, loss_function, clean_dataloader, device, evaluation_functions
+        )
+        console_logger("Clean", clean_stats, i)
+
+        # Validate the model on the real dataset
+        real_stats = validate_model(
+            model, loss_function, real_val_dataloader, device, evaluation_functions
+        )
+        console_logger("Real", real_stats, i)
+
+        # Logging on console time metrics
+        end_time_epoch = time.time()
+        elapsed_time += end_time_epoch - start_time_epoch
+        log_elapsed_remaining_total_time(elapsed_time, i + 1, epoch_n)
+
+
 def train_epoch(
     model: nn.Module,
     loss_function: Callable[[Tensor, Tensor], Tensor],

@@ -254,3 +254,7 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)  # For all GPUs (if you use multi-GPU)
     np.random.seed(seed)
     random.seed(seed)
+
+
+def load_weights(file_path: str, device):
+    return torch.load(file_path, map_location=torch.device(device), weights_only=True)
