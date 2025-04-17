@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from torch import Tensor
 
 import torch.nn as nn
+import numpy as np
+import random
 import torch
 import os
 
@@ -244,3 +246,11 @@ def hamming_encode(bits: List[bool]) -> List[bool]:
         encoded[parity_pos - 1] = parity_value
 
     return encoded
+
+
+def set_seed(seed):
+    torch.manual_seed(seed)  # For CPU
+    torch.cuda.manual_seed(seed)  # For current GPU
+    torch.cuda.manual_seed_all(seed)  # For all GPUs (if you use multi-GPU)
+    np.random.seed(seed)
+    random.seed(seed)
