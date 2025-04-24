@@ -52,6 +52,9 @@ VAL_VARIETY = 30
 CLEAN_VARIETY = 1
 BATCH_SIZE = 32
 
+REAL_TRAIN = 0.1
+REAL_EVAL = 1 - REAL_TRAIN
+
 # Checkpoint saving parameters
 OBJECTIVE = "minimize"
 METRIC: EvaluationType = "Loss"
@@ -81,7 +84,7 @@ evaluation_functions = [AverageAccuracyVectorOutput()]
 # REAL DATASET CONFIGS
 real_dtst = real_dataset(args.real_dataset_path)
 set_seed(42)
-real_train_dataset, real_val_dataset = random_split(real_dtst, [0.25, 0.75])
+real_train_dataset, real_val_dataset = random_split(real_dtst, [REAL_TRAIN, REAL_EVAL])
 real_val_dataloader = DataLoader(real_val_dataset, BATCH_SIZE, False)
 
 # DATASETS & DATALOADERS CREATION ######################################################################################
