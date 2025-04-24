@@ -46,7 +46,7 @@ args = parser.parse_args()
 # Model training parameters
 N_CLASSES = 256
 EPOCHS_N = 10
-LR = 1e-4
+LR = 2.5e-5
 TRAIN_VARIETY = 400
 VAL_VARIETY = 30
 CLEAN_VARIETY = 1
@@ -67,14 +67,7 @@ m.load_state_dict(load_weights(args.selected_checkpoint_file_path, device))
 
 # OPTIMIZER & SCHEDULER CREATION #######################################################################################
 optimizer = Adam(m.parameters(), lr=LR, betas=(0.9, 0.999), eps=1e-8)
-scheduler_function = lambda epoch: (
-    0.5
-    ** sum(
-        epoch >= milestone
-        for milestone in [0.4 * EPOCHS_N, 0.6 * EPOCHS_N, 0.8 * EPOCHS_N]
-    )
-)
-scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=scheduler_function)
+# SCHEDULER MISSING BECAUSE OF FINE-TUNING
 
 
 # LOSS & EVALUATION FUNCTIONS CREATION ###################################################################################
