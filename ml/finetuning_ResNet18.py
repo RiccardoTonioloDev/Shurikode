@@ -52,7 +52,7 @@ VAL_VARIETY = 30
 CLEAN_VARIETY = 1
 BATCH_SIZE = 32
 
-REAL_TRAIN = 0.1
+REAL_TRAIN = 0.15
 REAL_EVAL = 1 - REAL_TRAIN
 
 # Checkpoint saving parameters
